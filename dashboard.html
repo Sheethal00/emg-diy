@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMG Dashboard</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1b1f24;--mut:#667085;--line:#d9dde3;--wave:#2f6fdd;--env:#e8590c;--a:#2f6fdd;--b:#e8590c;--ok:#2b8a3e}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1216;--card:#181c22;--fg:#e6e9ee;--mut:#8b94a3;--line:#2a313b;--wave:#6ea8ff;--env:#ff922b;--a:#6ea8ff;--b:#ff922b;--ok:#51cf66}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:12px;max-width:1100px;margin:auto}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+h1{font-size:18px;margin:0 auto 0 0}
+.badge{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mut)}
+.badge.live{color:var(--ok);border-color:var(--ok)}
+button,select,input{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}button:disabled{opacity:.5;cursor:default}
+button.rec{border-color:#e03131;color:#e03131}button.rec.on{background:#e03131;color:#fff}
+#banner{display:none;padding:8px 12px;border-radius:8px;background:var(--env);color:#000;margin-bottom:10px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
+.card h2{display:flex;gap:8px;align-items:center;margin:0 0 6px;font-size:14px}
+.card input{width:100%;font-weight:600;padding:3px 6px;border-color:transparent;background:transparent}
+.card input:focus{border-color:var(--line)}
+canvas{width:100%;height:120px;display:block;border-radius:6px}
+.now{font-size:26px;font-weight:700;white-space:nowrap}.now small{font-size:12px;color:var(--mut);font-weight:400}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px;font-size:12px;color:var(--mut)}
+.stats b{display:block;font-size:15px;color:var(--fg)}
+.cmp{margin-top:10px}.cmp .row{display:flex;gap:8px;align-items:center;margin:8px 0}
+.lab{width:90px;font-size:13px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{flex:1;height:14px;background:var(--bg);border-radius:7px;position:relative;overflow:hidden}
+.bar i{position:absolute;top:0;bottom:0;border-radius:7px}
+.bar .mid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:var(--line)}
+.val{width:110px;text-align:right;font-variant-numeric:tabular-nums;font-size:13px}
+.note{font-size:12px;color:var(--mut);margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>4-channel EMG</h1>
+  <span class="badge" id="src">connecting…</span>
+  <button id="bRest">1. Calibrate rest</button>
+  <button id="bMvc">2. Calibrate max</button>
+  <input id="sname" value="session" size="10" aria-label="Session name">
+  <button id="bRec" class="rec">● Record</button>
+  <button id="bReset">Reset reps</button>
+</header>
+<div id="banner"></div>
+<div class="grid" id="chs"></div>
+<div class="card cmp">
+  <h2>Muscle comparison
+    <select id="pair"></select>
+  </h2>
+  <div class="row"><span class="lab" id="nA"></span><div class="bar"><i id="barA" style="background:var(--a);left:0;width:0"></i></div><span class="val" id="vA"></span></div>
+  <div class="row"><span class="lab" id="nB"></span><div class="bar"><i id="barB" style="background:var(--b);left:0;width:0"></i></div><span class="val" id="vB"></span></div>
+  <div class="row"><span class="lab">Balance</span><div class="bar"><span class="mid"></span><i id="barBal" style="left:50%;width:0;background:var(--a)"></i></div><span class="val" id="vBal"></span></div>
+  <div class="row"><span class="lab">Co-activation</span><div class="bar"><i id="barCci" style="left:0;width:0;background:var(--ok)"></i></div><span class="val" id="vCci"></span></div>
+  <div class="row"><span class="lab">Onset lag</span><span id="vLag" style="font-size:13px"></span></div>
+  <div class="note">Last 5 s, active time only (either muscle above its threshold). Balance: positive = first muscle works harder. Co-activation: overlap of the two activation envelopes (high = both on together). Onset lag: positive = second muscle starts later.</div>
+</div>
+<script>
+const N=4,PTS=500,PAIRS=[[0,1],[2,3],[0,2],[0,3],[1,2],[1,3]];
+const wave=[...Array(N)].map(()=>new Float32Array(PTS)),env=[...Array(N)].map(()=>new Float32Array(PTS));
+let S=null,names=[];
+try{names=JSON.parse(localStorage.getItem('emgNames')||'[]')}catch(e){}
+for(let i=0;i<N;i++)names[i]=names[i]||('Muscle '+(i+1));
+const $=id=>document.getElementById(id);
+const cvs=[],el=[];
+for(let c=0;c<N;c++){
+  const d=document.createElement('div');d.className='card';
+  d.innerHTML=`<h2><input value="${names[c]}" aria-label="Channel ${c+1} name"></h2>
+  <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="now"><span class="n">0</span><small> % max</small></span><small style="color:var(--mut)" class="th"></small></div>
+  <canvas></canvas>
+  <div class="stats"><div><b class="r">0</b>reps</div><div><b class="pk">-</b>last peak</div><div><b class="mn">-</b>last mean</div><div><b class="mf">-</b>med. freq</div></div>
+  <div class="note fat"></div>`;
+  $('chs').appendChild(d);
+  d.querySelector('input').oninput=e=>{names[c]=e.target.value;try{localStorage.setItem('emgNames',JSON.stringify(names))}catch(_){};fillPair()};
+  cvs.push(d.querySelector('canvas'));
+  el.push({n:d.querySelector('.n'),th:d.querySelector('.th'),r:d.querySelector('.r'),pk:d.querySelector('.pk'),mn:d.querySelector('.mn'),mf:d.querySelector('.mf'),fat:d.querySelector('.fat')});
+}
+function fillPair(){
+  const sel=$('pair'),cur=sel.value;sel.innerHTML='';
+  PAIRS.forEach(([a,b])=>{const o=document.createElement('option');o.value=(a+1)+'-'+(b+1);o.textContent=names[a]+' ↔ '+names[b];sel.appendChild(o)});
+  if(cur)sel.value=cur;
+}
+fillPair();
+function push(arr,v){const k=Math.min(v.length,arr.length);arr.copyWithin(0,k);for(let i=0;i<k;i++)arr[arr.length-k+i]=v[v.length-k+i]}
+const f0=v=>v==null?'-':v.toFixed(0);
+function onMsg(m){
+  S=m;
+  for(let c=0;c<N;c++){push(wave[c],m.w[c]);push(env[c],m.e[c])}
+  const s=$('src');s.textContent=m.src==='LIVE'?'LIVE':'SIMULATED DATA';s.className='badge'+(m.src==='LIVE'?' live':'');
+  m.ch.forEach((x,c)=>{const e=el[c];
+    e.n.textContent=f0(x.now);e.th.textContent='rep threshold '+f0(x.th)+'%';
+    e.r.textContent=x.reps;e.pk.textContent=f0(x.peak)+(x.peak==null?'':'%');e.mn.textContent=f0(x.mean)+(x.mean==null?'':'%');e.mf.textContent=f0(x.mdf)+(x.mdf==null?'':' Hz');
+    e.fat.textContent=x.mdf_chg==null?'':('Median freq vs first rep: '+(x.mdf_chg>0?'+':'')+x.mdf_chg.toFixed(0)+'% (falling over a set suggests fatigue)');
+  });
+  const b=$('banner');
+  if(m.cal){b.style.display='block';b.textContent=(m.cal.kind==='cal_rest'?'Calibrating rest: stay completely relaxed… ':'Calibrating max: contract as hard as you can… ')+m.cal.left.toFixed(0)+' s'}
+  else b.style.display='none';
+  ['bRest','bMvc'].forEach(i=>$(i).disabled=!!m.cal);
+  const r=$('bRec');r.classList.toggle('on',m.rec);r.textContent=m.rec?'■ Stop':'● Record';
+  const p=m.pairs[$('pair').value];
+  if(p){const [a,b2]=$('pair').value.split('-').map(Number);
+    $('nA').textContent=names[a-1];$('nB').textContent=names[b2-1];
+    $('barA').style.width=Math.min(100,p.a)+'%';$('vA').textContent=p.a.toFixed(0)+'% max';
+    $('barB').style.width=Math.min(100,p.b)+'%';$('vB').textContent=p.b.toFixed(0)+'% max';
+    const bal=Math.max(-100,Math.min(100,p.bal)),bi=$('barBal');
+    bi.style.left=bal>=0?'50%':(50+bal/2)+'%';bi.style.width=Math.abs(bal)/2+'%';bi.style.background=bal>=0?'var(--a)':'var(--b)';
+    $('vBal').textContent=(bal>0?'+':'')+bal.toFixed(0)+'%';
+    $('barCci').style.width=p.cci+'%';$('vCci').textContent=p.cci.toFixed(0)+'%';
+    $('vLag').textContent=p.lag==null?'-':(p.lag>=0?names[b2-1]+' starts '+p.lag.toFixed(0)+' ms after '+names[a-1]:names[b2-1]+' starts '+(-p.lag).toFixed(0)+' ms before '+names[a-1]);
+  }
+}
+function draw(){
+  const cs=getComputedStyle(document.documentElement),cw=cs.getPropertyValue('--wave'),ce=cs.getPropertyValue('--env'),cl=cs.getPropertyValue('--line');
+  const dpr=window.devicePixelRatio||1;
+  for(let c=0;c<N;c++){
+    const cv=cvs[c],w=cv.clientWidth,h=cv.clientHeight;
+    if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr)}
+    const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+    let em=100,wm=100;for(let i=0;i<PTS;i++){if(env[c][i]>em)em=env[c][i];const a=Math.abs(wave[c][i]);if(a>wm)wm=a}
+    em*=1.1;wm*=1.1;
+    g.beginPath();g.moveTo(0,h);for(let i=0;i<PTS;i++)g.lineTo(i/(PTS-1)*w,h-env[c][i]/em*h);g.lineTo(w,h);g.closePath();
+    g.globalAlpha=.25;g.fillStyle=ce;g.fill();g.globalAlpha=1;g.strokeStyle=ce;g.lineWidth=1.5;g.stroke();
+    g.strokeStyle=cw;g.lineWidth=1;g.beginPath();
+    for(let i=0;i<PTS;i++){const x=i/(PTS-1)*w,y=h/2-wave[c][i]/wm*h/2;i?g.lineTo(x,y):g.moveTo(x,y)}g.stroke();
+    if(S){const y=h-S.ch[c].th/em*h;g.setLineDash([4,4]);g.strokeStyle=cl;g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();g.setLineDash([])}
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+const cmd=o=>fetch('/cmd',{method:'POST',body:JSON.stringify(o)});
+$('bRest').onclick=()=>cmd({cmd:'cal_rest'});
+$('bMvc').onclick=()=>cmd({cmd:'cal_mvc'});
+$('bReset').onclick=()=>cmd({cmd:'reset'});
+$('bRec').onclick=()=>cmd({cmd:'record',on:!(S&&S.rec),name:$('sname').value});
+const es=new EventSource('/stream');
+es.onmessage=e=>onMsg(JSON.parse(e.data));
+es.onerror=()=>{$('src').textContent='disconnected';$('src').className='badge'};
+</script>
+</body>
+</html>

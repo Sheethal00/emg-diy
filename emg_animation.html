@@ -1,0 +1,461 @@
+<title>Muscle to Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout concept: an instrument bench. A stage rail on top, a live scope-style scene on the left, plain-language notes on the right. */
+:root{
+  --bg:#EBF0F4; --panel:#FFFFFF; --soft:#F3F6F9; --ink:#13202B; --mute:#566877; --grid:#D9E1E8; --rule:#C5D0DA;
+  --sig:#0B7F8E; --hum:#B96A06; --muscle:#C4403A; --accent:#2B59C3; --ok:#2E8B57;
+  --disp:'Barlow Condensed','Arial Narrow',Arial,sans-serif; --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D161D; --panel:#141F28; --soft:#1A2733; --ink:#E7EEF4; --mute:#96A8B7; --grid:#25374A; --rule:#31465A;
+  --sig:#44C3D4; --hum:#F2A640; --muscle:#FF7C72; --accent:#86A9FF; --ok:#5BC98A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D161D; --panel:#141F28; --soft:#1A2733; --ink:#E7EEF4; --mute:#96A8B7; --grid:#25374A; --rule:#31465A;
+  --sig:#44C3D4; --hum:#F2A640; --muscle:#FF7C72; --accent:#86A9FF; --ok:#5BC98A; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+.app{max-width:1200px;margin:0 auto;padding-block:22px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:600 clamp(34px,6vw,54px)/1 var(--disp);letter-spacing:.01em;margin:0 0 8px}
+.sub{margin:0;color:var(--mute);max-width:62ch}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:16px 0 0;padding:0;list-style:none;font-size:13px;color:var(--mute)}
+.legend li{display:flex;align-items:center;gap:7px}
+.legend i{width:18px;height:3px;border-radius:2px;display:inline-block}
+.rail{display:flex;gap:18px;overflow-x:auto;margin:22px 0 16px;padding-bottom:6px;scrollbar-width:thin}
+.zone{flex:0 0 auto}
+.zone h2{font:500 12px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 7px}
+.chips{display:flex;gap:6px}
+button,select{font:inherit;color:var(--ink)}
+.chip{border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:7px 10px;cursor:pointer;display:flex;gap:7px;align-items:baseline;white-space:nowrap;font-size:13px}
+.chip b{font:500 12px var(--mono);color:var(--mute)}
+.chip:hover{background:var(--soft)}
+.chip[aria-current="step"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip[aria-current="step"] b{color:var(--bg);opacity:.75}
+.chip.done{border-color:var(--sig)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stage{display:grid;gap:16px;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);align-items:start}
+@media (max-width:900px){.stage{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:12px}
+.scene{padding:6px 0 0}
+#scene{display:block;margin:0 auto;max-width:100%}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px 14px;border-top:1px solid var(--grid)}
+.btn{border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:14px}
+.btn:hover{background:var(--soft)}
+.btn.main{background:var(--ink);color:var(--bg);border-color:var(--ink);min-width:84px}
+.controls label{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:6px}
+select{border:1px solid var(--rule);background:var(--panel);border-radius:8px;padding:6px 8px;font-size:14px}
+.scrub{flex:1 1 170px;display:flex;align-items:center;gap:10px;min-width:0}
+.scrub input{flex:1;min-width:0;accent-color:var(--accent)}
+.scrub output{font:400 13px var(--mono);color:var(--mute);min-width:56px;text-align:right}
+.explain{padding:20px 20px 18px}
+.badge{font:500 12px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
+.explain h3{font:600 clamp(26px,3.4vw,34px)/1.05 var(--disp);margin:0 0 10px;text-wrap:balance}
+.explain p{margin:0 0 14px;max-width:62ch}
+.explain h4{font:600 12px var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:16px 0 6px}
+.explain ul{margin:0;padding-left:18px}
+.explain li{margin:0 0 5px}
+.nums li::marker{color:var(--sig)}
+.pager{display:flex;gap:8px;margin-top:18px}
+.foot{margin:22px 0 0;font-size:13px;color:var(--mute);max-width:80ch}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+
+<main class="app">
+  <h1>Muscle to Dashboard</h1>
+  <p class="sub">Follow one set of three biceps curls through every stage of the device, from the nerve command to the number on the screen.</p>
+  <ul class="legend" aria-label="Colour key">
+    <li><i style="background:var(--sig)"></i>Muscle signal</li>
+    <li><i style="background:var(--hum)"></i>Interference and offset</li>
+    <li><i style="background:var(--muscle)"></i>Effort and reps</li>
+    <li><i style="background:var(--accent)"></i>Digital data</li>
+  </ul>
+  <nav class="rail" id="rail" aria-label="Stages"></nav>
+  <section class="stage">
+    <div class="card scene">
+      <canvas id="scene" role="img" aria-label="Animated diagram"></canvas>
+      <div class="controls">
+        <button class="btn main" id="play" type="button">Pause</button>
+        <button class="btn" id="prev" type="button">Back</button>
+        <button class="btn" id="next" type="button">Next stage</button>
+        <label>Speed
+          <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+        </label>
+        <label><input type="checkbox" id="tour"> Play all stages</label>
+        <div class="scrub"><input type="range" id="scrub" min="0" max="12" step="0.01" value="9" aria-label="Time in the 12 second recording"><output id="tread">9.00 s</output></div>
+      </div>
+    </div>
+    <article class="card explain" aria-live="polite">
+      <p class="badge" id="badge"></p>
+      <h3 id="title"></h3>
+      <p id="body"></p>
+      <h4>In your build</h4>
+      <ul id="build"></ul>
+      <h4>Numbers</h4>
+      <ul id="nums" class="nums"></ul>
+      <div class="pager">
+        <button class="btn" id="prev2" type="button">Back</button>
+        <button class="btn" id="next2" type="button">Next stage</button>
+      </div>
+    </article>
+  </section>
+  <p class="foot">The signals here are simulated to show each stage and are not recorded data. Part values and bench results come from your build. This is a hobby device and not a medical instrument.</p>
+</main>
+
+<script>
+/* ---------- simulated signal chain (illustrative, not recorded data) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function biquad(type,f0,fs,Q){const w=2*Math.PI*f0/fs,c=Math.cos(w),s=Math.sin(w),al=s/(2*Q);let b0,b1,b2;
+  if(type==='hp'){b0=(1+c)/2;b1=-(1+c);b2=(1+c)/2}else{b0=(1-c)/2;b1=1-c;b2=(1-c)/2}
+  const a0=1+al;return{b0:b0/a0,b1:b1/a0,b2:b2/a0,a1:-2*c/a0,a2:(1-al)/a0}}
+function runBQ(x,q){const y=new Float32Array(x.length);let x1=0,x2=0,y1=0,y2=0;
+  for(let i=0;i<x.length;i++){const v=q.b0*x[i]+q.b1*x1+q.b2*x2-q.a1*y1-q.a2*y2;y[i]=v;x2=x1;x1=x[i];y2=y1;y1=v}return y}
+function fftPower(x,n){const re=new Float64Array(n),im=new Float64Array(n);
+  for(let i=0;i<x.length&&i<n;i++)re[i]=x[i];
+  for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}}
+  for(let len=2;len<=n;len<<=1){const ang=-2*Math.PI/len,wr=Math.cos(ang),wi=Math.sin(ang),h=len>>1;
+    for(let i=0;i<n;i+=len){let cr=1,ci=0;for(let k=0;k<h;k++){const a=i+k,b=a+h;
+      const vr=re[b]*cr-im[b]*ci,vi=re[b]*ci+im[b]*cr;re[b]=re[a]-vr;im[b]=im[a]-vi;re[a]+=vr;im[a]+=vi;
+      const nr=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=nr}}}
+  const p=new Float64Array(n>>1);for(let k=0;k<p.length;k++)p[k]=re[k]*re[k]+im[k]*im[k];return p}
+function medianFreq(seg,fs){const n=4096,m=Math.min(seg.length,n),w=new Float64Array(m);
+  for(let i=0;i<m;i++)w[i]=seg[i]*(0.5-0.5*Math.cos(2*Math.PI*i/(m-1)));
+  const p=fftPower(w,n);let tot=0;for(let k=1;k<p.length;k++)tot+=p[k];let c=0;
+  for(let k=1;k<p.length;k++){c+=p[k];if(c>=tot/2)return k*fs/n}return 0}
+
+function buildSim(){
+  const rnd=mulberry32(11),gauss=()=>(rnd()+rnd()+rnd()-1.5)*2;
+  const FS=4000,DUR=12,N=FS*DUR,FS1=1000,N1=FS1*DUR,GAIN=513;
+  const REPS=[{t0:1.0,t1:3.3,a:0.78},{t0:4.7,t1:7.0,a:0.9},{t0:8.4,t1:10.7,a:1.0}];
+  const FAT=[1.0,1.16,1.34],BOOST=[1.0,1.08,1.18];
+  const hump=t=>{for(const r of REPS)if(t>=r.t0&&t<=r.t1)return Math.pow(Math.sin(Math.PI*(t-r.t0)/(r.t1-r.t0)),1.3);return 0};
+  const effort=t=>{for(const r of REPS)if(t>=r.t0&&t<=r.t1)return r.a*hump(t);return 0};
+  const repAt=t=>{for(let i=0;i<REPS.length;i++)if(t>=REPS[i].t0-0.3&&t<=REPS[i].t1+0.3)return i;return 0};
+  // motor units: small to large; later ones have larger, faster spikes
+  const th=[0,0.08,0.18,0.3,0.43,0.57,0.72,0.86];
+  const MU=th.map((x,i)=>({th:x,amp:0.35+0.2*i,sig:(2.0-0.11*i)*1e-3,ph:rnd(),fire:1,spikes:[]}));
+  const emg=new Float32Array(N),eff=new Float32Array(N);for(let i=0;i<N;i++)eff[i]=effort(i/FS);
+  for(let i=0;i<N;i++){const t=i/FS,e=effort(t);if(e<=0){for(const u of MU)u.ph=0;continue}
+    const ri=repAt(t);
+    for(const u of MU){if(e<=u.th){u.ph=0;continue}
+      u.ph+=(8+20*Math.min(1,(e-u.th)/0.5))/FS;
+      if(u.ph>=u.fire){u.ph=0;u.fire=1+(rnd()-0.5)*0.35;u.spikes.push(t);
+        const amp=u.amp*BOOST[ri]*(0.9+0.2*rnd()),sig=u.sig*FAT[ri],half=Math.ceil(4*sig*FS);
+        for(let k=-half;k<=half;k++){const j=i+k;if(j<0||j>=N)continue;const tau=k/FS;emg[j]+=amp*(-(tau/sig))*Math.exp(.5-tau*tau/(2*sig*sig))}}}}
+  // scale so the hardest rep is about 380 uV rms at the skin
+  let ss=0,cnt=0;for(let i=Math.floor(8.6*FS);i<Math.floor(10.5*FS);i++){ss+=emg[i]*emg[i];cnt++}
+  const sc=380/Math.sqrt(ss/cnt);for(let i=0;i<N;i++)emg[i]*=sc;
+  // skin electrodes (uV): mains hum is common to both, offsets and motion artefact are not
+  const A=new Float32Array(N),B=new Float32Array(N),D=new Float32Array(N);
+  for(let i=0;i<N;i++){const t=i/FS,hum=3000*Math.sin(2*Math.PI*50*t+.7)+450*Math.sin(2*Math.PI*150*t+1.9);
+    const mot=1300*Math.min(1,effort(t)*2)*Math.sin(2*Math.PI*.45*t);
+    A[i]=hum+3000+600*Math.sin(2*Math.PI*.12*t)+mot+.5*emg[i]+8*gauss();
+    B[i]=hum*.997+1000-.5*emg[i]+8*gauss();D[i]=A[i]-B[i]}
+  // INA333 (x10.1), high-pass 19.4 Hz, gain stage (x50.9) with 470 Hz low-pass, around VREF 1.65 V
+  const G1=1+100/11,G2=1+49.9/1,dt=1/FS;
+  const ina=new Float32Array(N),hp=new Float32Array(N),gout=new Float32Array(N);
+  for(let i=0;i<N;i++)ina[i]=D[i]*G1*1e-3;                    // mV about 1.65 V
+  const rc=1/(2*Math.PI*19.4),ah=rc/(rc+dt);let px=ina[0],py=0;
+  for(let i=0;i<N;i++){py=ah*(py+ina[i]-px);px=ina[i];hp[i]=py}   // mV about 1.65 V
+  const rl=1/(2*Math.PI*470),bl=dt/(rl+dt);let yl=0;
+  for(let i=0;i<N;i++){yl+=bl*(hp[i]*G2-yl);gout[i]=Math.max(.05,Math.min(3.25,1.65+yl*1e-3))}
+  // ADS1015: 1 count = 1 mV at its input, sampled at 1 kHz
+  const counts=new Int16Array(N1);for(let k=0;k<N1;k++)counts[k]=Math.max(-2048,Math.min(2047,Math.round((gout[k*4]-1.65)*1000+gauss()*.7)));
+  // laptop: counts -> uV at the skin, band-pass 20-450 Hz, rectify, 100 ms RMS
+  const uv=new Float32Array(N1);for(let k=0;k<N1;k++)uv[k]=counts[k]*1000/GAIN;
+  let filt=uv;for(const q of [0.5412,1.3066])filt=runBQ(filt,biquad('hp',20,FS1,q));filt=runBQ(filt,biquad('lp',450,FS1,.7071));
+  const rect=new Float32Array(N1),env=new Float32Array(N1);let acc=0;const W=100,sq=new Float32Array(N1);
+  for(let k=0;k<N1;k++){rect[k]=Math.abs(filt[k]);sq[k]=filt[k]*filt[k];acc+=sq[k];if(k>=W)acc-=sq[k-W];env[k]=Math.sqrt(Math.max(0,acc)/Math.min(k+1,W))}
+  // calibration: rest = quiet second, max = a little above the hardest burst
+  let rs=0;for(let k=300;k<900;k++)rs+=env[k];const rest=rs/600;
+  let mx=0;for(let k=0;k<N1;k++)if(env[k]>mx)mx=env[k];const mvc=mx*1.05;
+  const pct=new Float32Array(N1);for(let k=0;k<N1;k++)pct[k]=Math.max(0,(env[k]-rest)/(mvc-rest)*100);
+  // rep detection (same rules as the dashboard: start >= 10 %, end < 7 %, at least 100 ms)
+  const reps=[];{let act=false,t0=0,pk=0,sm=0,n=0;const on=10,off=7;
+    for(let k=0;k<N1;k++){const p=pct[k];
+      if(!act){if(p>=on){act=true;t0=k;pk=p;sm=p;n=1}}
+      else{pk=Math.max(pk,p);sm+=p;n++;if(p<off){act=false;if(k-t0>=100){reps.push({k0:t0,k1:k,t0:t0/FS1,t1:k/FS1,dur:(k-t0)/FS1,peak:pk,mean:sm/n,mdf:medianFreq(filt.subarray(t0,k),FS1)})}}}}}
+  return{eff,FS,DUR,N,FS1,N1,GAIN,REPS,MU,hump,effort,emg,A,B,D,ina,hp,gout,counts,uv,filt,rect,env,pct,rest,mvc,reps,G1,G2}}
+
+
+/* ====================================================================== */
+const DUR=12, SIM=buildSim();
+const SANS="'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif",
+      MONO="'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace",
+      DISP="'Barlow Condensed','Arial Narrow',Arial,sans-serif";
+
+const STAGES=[
+ {zone:'Body',short:'Workout',title:'A curl starts in your head',
+  body:'Your motor cortex sends a command down the spinal cord to motor neurons in the arm. Each motor neuron fires an electrical pulse along its nerve, and the muscle fibres it controls contract. The harder you squeeze, the more neurons fire, and the faster each one fires.',
+  build:['Nothing to wire here. This stage is you.','The device records the electrical activity that makes the muscle contract. It does not measure force or weight.'],
+  nums:['Three curls shown, about 2 s each','Effort rises and falls with each curl']},
+ {zone:'Body',short:'Muscle',title:'Motor units fire and their pulses add up',
+  body:'One motor neuron and the fibres it controls form a motor unit. Small units fire first. As effort rises, larger units join and every unit fires faster. Each firing makes a tiny voltage pulse, and hundreds of overlapping pulses add up to the surface EMG signal.',
+  build:['Each row in the scene is one motor unit and each tick is one pulse.','When a muscle tires, the pulses get slower and wider. That lowers the signal’s median frequency, which the dashboard tracks.'],
+  nums:['Signal at the skin: tens of µV to a few mV','Most of its power lies between 20 and 450 Hz']},
+ {zone:'Body',short:'Electrodes',title:'Two electrodes pick up a tiny difference',
+  body:'Two Ag/AgCl electrodes sit about 2 cm apart on the belly of the biceps, and a third sits on a bony spot as the reference. Both electrodes see the 50 Hz hum from mains wiring in the room, and they see it equally. The muscle signal differs between the two spots, so the difference between them is mostly muscle.',
+  build:['Electrode + and Electrode − go to the INA333 inputs.','The reference electrode connects through R11 (10 kΩ) to the 1.65 V reference.','Skin contact also adds a small steady offset and a slow drift when you move.'],
+  nums:['Mains hum: 50 Hz, a few mV, the same on both','Muscle signal: about 1 mV or less at each electrode']},
+ {zone:'Analog front end',short:'INA333',title:'The INA333 cancels the hum and amplifies ×10',
+  body:'The INA333 is an instrumentation amplifier. It subtracts the two electrode voltages and amplifies only the difference. The hum is the same on both inputs, so it cancels. This is called common-mode rejection. The output sits on 1.65 V so the signal can swing both ways on a single 3.3 V supply.',
+  build:['Rg = 11 kΩ sets the gain: 1 + 100 kΩ ÷ 11 kΩ ≈ 10.','Each input has a 1 kΩ resistor and a 1 nF capacitor to block radio interference.','The REF pin connects to the 1.65 V reference.'],
+  nums:['Gain ≈ 10','Common-mode rejection: roughly 100 dB or better']},
+ {zone:'Analog front end',short:'High-pass',title:'A high-pass filter removes drift and offset',
+  body:'Skin contact adds a steady offset and a slow wobble whenever the electrodes move. Both sit far below the frequencies of muscle. A capacitor in series blocks them, and a resistor to the 1.65 V reference sets where the blocking starts.',
+  build:['C1 = 1 µF in series, R9 = 8.2 kΩ to the 1.65 V reference.','Cut-off = 1 ÷ (2π × 8.2 kΩ × 1 µF) ≈ 19 Hz.'],
+  nums:['Blocks everything below about 19 Hz','Keeps the muscle band, 20 to 450 Hz']},
+ {zone:'Analog front end',short:'Gain ×51',title:'The OPA2333 amplifies another ×51',
+  body:'After the first stage the signal is still only tens of millivolts. A second amplifier multiplies it by about 51, so the total gain is about 513. The signal now swings a fraction of a volt around 1.65 V, which fits the ADC’s input range. A small capacitor in the feedback also rolls off frequencies above about 470 Hz.',
+  build:['OPA2333 section B: R7 = 49.9 kΩ in the feedback and R8 = 1 kΩ to the reference. Gain = 1 + 49.9 ÷ 1 ≈ 51.','C2 = 6.8 nF across R7 gives the roll-off near 470 Hz.','OPA2333 section A buffers the 1.65 V reference (two 10 kΩ resistors and 1 µF).'],
+  nums:['Total gain 10 × 51 ≈ 513','Output stays between 0 and 3.3 V']},
+ {zone:'Digitise and send',short:'ADC',title:'The ADS1015 turns voltage into numbers',
+  body:'The ADS1015 measures the voltage between A0 and A1, which is the signal minus the 1.65 V reference, and reports it as a whole number. It converts continuously and faster than needed, so the ESP32 can read a fresh value every millisecond.',
+  build:['A0 receives the signal through R10 (1 kΩ). A1 connects to the 1.65 V reference.','Range ±2.048 V in 12 bits, so 1 count = 1 mV at the ADC input. With the ×513 gain, 1 count ≈ 2 µV at the skin.'],
+  nums:['1600 conversions per second inside the chip','Your bench test: ±1.65 V gave +1643 and −1644 counts']},
+ {zone:'Digitise and send',short:'ESP32',title:'The ESP32 reads and timestamps every millisecond',
+  body:'Every 1000 µs the ESP32 asks the ADS1015 for its latest result over I2C, stamps it with the microsecond clock and stores it in a buffer. A separate task sends the buffer out in small batches. Keeping those two jobs apart means a slow wireless link can never stall the sampling.',
+  build:['I2C on GPIO21 (SDA) and GPIO22 (SCL) at 400 kHz.','The buffer holds 2048 samples, about 2 seconds.','Each sample becomes one text line: microseconds, counts.'],
+  nums:['Your bench test: 1000.0 Hz and no gap over 2 ms','Over Bluetooth: largest gap 1003 µs']},
+ {zone:'Digitise and send',short:'Bluetooth',title:'Batches travel over Bluetooth',
+  body:'About every 10 ms the ESP32 sends roughly ten lines to the laptop over Bluetooth serial. During any recording with electrodes on the body, the ESP32 runs from a battery, so no wire connects you to a computer. The laptop treats the Bluetooth link like an ordinary serial port.',
+  build:['USB for bench tests, Bluetooth and battery for anything with electrodes on the body.','If the buffer ever overflows, the stream carries a “# dropped” line so a loss is visible.'],
+  nums:['About 11 kB per second','Port on the laptop: /dev/rfcomm0']},
+ {zone:'Software',short:'Filter',title:'The laptop cleans the signal and measures it',
+  body:'The dashboard program converts counts back to microvolts at the skin (counts × 1000 ÷ 513). A band-pass filter keeps 20 to 450 Hz. It then takes the absolute value and averages the power over 100 ms. The result is a smooth envelope that rises and falls with how hard the muscle works.',
+  build:['emg_server.py reads the port and runs the filters.','Use --gain 513 once the amplifier is built. With no amplifier, use --gain 1.'],
+  nums:['Band-pass 20 to 450 Hz','Envelope window 100 ms']},
+ {zone:'Software',short:'Reps',title:'Calibration turns microvolts into % of your maximum',
+  body:'Two short calibrations set the scale: 5 seconds relaxed for rest, then 5 seconds of your hardest squeeze for max. After that, 100% means your own maximum. A rep begins when the muscle passes 10% and ends when it falls below 7%. For each rep the dashboard records the peak, the mean and the median frequency, which falls as the muscle tires.',
+  build:['Click Calibrate rest, then Calibrate max, on the dashboard.','A rep must last at least 100 ms.'],
+  nums:['Rep starts at 10%, ends below 7%','A falling median frequency across a set suggests fatigue']},
+ {zone:'Software',short:'Dashboard',title:'You watch it live in the browser',
+  body:'The program serves a dashboard at localhost:8000. Each muscle card shows % max, a live trace, the rep count, the last peak, the last mean and the median frequency. Record saves a raw file at 1 kHz and a reps file for later. The other three muscle cards and the comparison panel come alive when you add more channels.',
+  build:['Open http://localhost:8000 in a browser.','Record writes session_…_raw.csv and session_…_reps.csv.'],
+  nums:['Four channels supported','Raw file at 1 kHz']}
+];
+const ZONES=['Body','Analog front end','Digitise and send','Software'];
+
+/* ---------- canvas plumbing ---------- */
+const cv=document.getElementById('scene'),ctx=cv.getContext('2d');
+let W=640,H=430,F=12,C={},T=9,step=0,playing=true,speed=1,tour=false,visited=new Set();
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;if(reduce)playing=false;
+function readColors(){const s=getComputedStyle(document.documentElement),g=n=>s.getPropertyValue(n).trim();
+  C={bg:g('--panel'),soft:g('--soft'),ink:g('--ink'),mute:g('--mute'),grid:g('--grid'),rule:g('--rule'),sig:g('--sig'),hum:g('--hum'),mus:g('--muscle'),acc:g('--accent'),ok:g('--ok')}}
+const PADX=14;
+function sceneH(i){const n=W<560;return[n?470:480,n?560:560,n?590:600,n?520:540,n?470:480,n?560:560,n?500:520,n?720:500,n?560:520,n?600:560,n?560:540,n?620:340][i]}
+function layout(){const w=cv.parentElement.clientWidth;W=Math.max(300,Math.floor(w));H=sceneH(step);F=W<520?11:12;
+  const d=Math.min(2,window.devicePixelRatio||1);cv.style.width=W+'px';cv.style.height=H+'px';cv.width=Math.round(W*d);cv.height=Math.round(H*d);ctx.setTransform(d,0,0,d,0,0)}
+/* drawing helpers */
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
+function line(a,b,c,d){ctx.beginPath();ctx.moveTo(a,b);ctx.lineTo(c,d);ctx.stroke()}
+function txt(s,x,y,o){o=o||{};ctx.font=`${o.w||400} ${o.s||F}px ${o.f||SANS}`;ctx.fillStyle=o.c||C.ink;ctx.textAlign=o.a||'left';ctx.textBaseline=o.b||'alphabetic';ctx.fillText(s,x,y)}
+function arrowTo(x1,y1,x2,y2,col){ctx.save();ctx.strokeStyle=col||C.mute;ctx.fillStyle=col||C.mute;ctx.lineWidth=1.5;line(x1,y1,x2,y2);const a=Math.atan2(y2-y1,x2-x1);ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-7*Math.cos(a-.45),y2-7*Math.sin(a-.45));ctx.lineTo(x2-7*Math.cos(a+.45),y2-7*Math.sin(a+.45));ctx.closePath();ctx.fill();ctx.restore()}
+function box(x,y,w,h,label,o){o=o||{};ctx.save();rrect(x,y,w,h,8);ctx.fillStyle=o.fill||C.soft;ctx.fill();ctx.strokeStyle=o.stroke||C.rule;ctx.lineWidth=o.lw||1;ctx.stroke();ctx.restore();
+  const lines=Array.isArray(label)?label:[label];const lh=F+3;let yy=y+h/2-(lines.length-1)*lh/2+F*.35;lines.forEach((l,i)=>txt(l,x+w/2,yy+i*lh,{a:'center',w:i?400:600,s:i?F-1:F,c:i?C.mute:(o.c||C.ink)}))}
+function pane(x,y,w,h){ctx.save();rrect(x,y,w,h,10);ctx.fillStyle=C.soft;ctx.fill();ctx.restore()}
+function tri(x,y,w,h,col){ctx.save();ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+h);ctx.lineTo(x+w,y+h/2);ctx.closePath();ctx.fillStyle=C.bg;ctx.fill();ctx.strokeStyle=col||C.ink;ctx.lineWidth=1.8;ctx.stroke();ctx.restore()}
+function zig(x1,y1,x2,y2,n,amp){const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),ux=dx/L,uy=dy/L,px=-uy,py=ux;ctx.beginPath();ctx.moveTo(x1,y1);
+  for(let i=0;i<n;i++){const a=(i+.25)/n*L,b=(i+.75)/n*L;ctx.lineTo(x1+ux*a+px*amp,y1+uy*a+py*amp);ctx.lineTo(x1+ux*b-px*amp,y1+uy*b-py*amp)}ctx.lineTo(x2,y2);ctx.stroke()}
+function plotR(y,h){return{x:PADX+40,y:y,w:W-PADX*2-40,h:h}}
+function grid(r,o){ctx.save();ctx.fillStyle=C.soft;ctx.fillRect(r.x,r.y,r.w,r.h);ctx.strokeStyle=C.grid;ctx.lineWidth=1;
+  for(const t of o.ticks){const yy=Math.round(r.y+r.h*(1-(t-o.lo)/(o.hi-o.lo)))+.5;line(r.x,yy,r.x+r.w,yy);txt(o.fmt?o.fmt(t):String(t),r.x-5,yy+3,{a:'right',s:F-2,f:MONO,c:C.mute})}
+  txt(o.title,r.x,r.y-7,{w:600});if(o.sub)txt(o.sub,r.x+r.w,r.y-7,{a:'right',s:F-1,c:C.mute});ctx.restore()}
+function series(arr,fs,r,o){ // o: lo,hi,color,tEnd,lw,k
+  const n=arr.length,k=o.k||1,te=Math.min(DUR,o.tEnd==null?T:o.tEnd),cols=Math.floor(r.w*te/DUR);if(cols<1)return;
+  const sy=v=>r.y+r.h*(1-(v*k-o.lo)/(o.hi-o.lo));ctx.save();ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();ctx.beginPath();
+  for(let c=0;c<cols;c++){const i0=Math.floor(c/r.w*DUR*fs),i1=Math.max(i0+1,Math.floor((c+1)/r.w*DUR*fs));let mn=1e9,mx=-1e9;
+    for(let i=i0;i<i1&&i<n;i++){const v=arr[i];if(v<mn)mn=v;if(v>mx)mx=v}
+    const x=r.x+c+.5,y1=sy(mx),y2=sy(mn);ctx.moveTo(x,y1);ctx.lineTo(x,Math.max(y2,y1+.9))}
+  ctx.strokeStyle=o.color;ctx.lineWidth=o.lw||1;ctx.stroke();ctx.restore()}
+function tx(r,t){return r.x+t/DUR*r.w}
+function head(r){ctx.save();ctx.strokeStyle=C.ink;ctx.globalAlpha=.5;ctx.lineWidth=1;const x=Math.round(tx(r,T))+.5;line(x,r.y,x,r.y+r.h);ctx.restore()}
+function taxis(r){for(let s=0;s<=DUR;s+=2)txt(s+' s',Math.min(r.x+r.w-8,Math.max(r.x+8,tx(r,s))),r.y+r.h+14,{a:'center',s:F-2,f:MONO,c:C.mute})}
+function hline(r,o,v,col,dash,label){const yy=r.y+r.h*(1-(v-o.lo)/(o.hi-o.lo));ctx.save();ctx.strokeStyle=col;ctx.lineWidth=1.3;ctx.setLineDash(dash||[5,4]);line(r.x,yy,r.x+r.w,yy);ctx.restore();if(label)txt(label,r.x+r.w-4,yy-4,{a:'right',s:F-1,c:col})}
+function terminal(x,y,w,h,k,base,title){pane(x,y,w,h);txt(title,x+12,y+18,{s:F-1,c:C.mute,f:MONO});
+  const lines=Math.floor((h-30)/(F+4));for(let i=0;i<lines;i++){const kk=k-(lines-1-i);if(kk<0)continue;const last=i===lines-1;
+    txt((base+kk*1000+698)+','+SIM.counts[kk],x+12,y+34+i*(F+4),{f:MONO,s:F,c:last?C.acc:C.mute,w:last?500:400})}}
+
+/* ---------- scenes ---------- */
+const S=[];
+S[0]=function(){const pw=W-PADX*2,ay=PADX,ah=236,e=SIM.effort(T),h=SIM.hump(T);pane(PADX,ay,pw,ah);
+  const sx=PADX+pw*.2,sy=ay+36,L1=88,L2=84,ex=sx,ey=sy+L1,a=(8+112*h)*Math.PI/180,wx=ex+L2*Math.sin(a),wy=ey+L2*Math.cos(a);
+  ctx.save();ctx.lineCap='round';ctx.strokeStyle=C.mute;ctx.globalAlpha=.55;ctx.lineWidth=22;line(sx,sy,ex,ey);ctx.lineWidth=18;line(ex,ey,wx,wy);ctx.globalAlpha=1;
+  const bu=1+.55*h;ctx.beginPath();ctx.ellipse(sx+10,sy+L1*.45,7*bu,31,0,0,7);ctx.fillStyle=C.mus;ctx.globalAlpha=.25+.6*e;ctx.fill();ctx.globalAlpha=1;
+  ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(sx,sy,6,0,7);ctx.fill();ctx.beginPath();ctx.arc(ex,ey,5,0,7);ctx.fill();
+  const nx=Math.cos(a),ny=-Math.sin(a);ctx.strokeStyle=C.ink;ctx.lineWidth=4;line(wx-nx*13,wy-ny*13,wx+nx*13,wy+ny*13);ctx.lineWidth=7;line(wx-nx*13,wy-ny*13,wx-nx*13,wy-ny*13);line(wx+nx*13,wy+ny*13,wx+nx*13,wy+ny*13);
+  if(e>.03){ctx.strokeStyle=C.mus;ctx.lineWidth=1.5;for(let i=0;i<3;i++){const ph=((performance.now()/700+i/3)%1);ctx.globalAlpha=(1-ph)*Math.min(1,e*1.6);ctx.beginPath();ctx.arc(sx+10,sy+L1*.45,24+ph*22,-.9,.9);ctx.stroke()}}
+  ctx.restore();
+  txt('Biceps',sx-20,sy+L1*.45+4,{a:'right',s:F,c:C.mute});
+  const labels=['Brain (motor cortex)','Spinal cord','Motor neurons','Muscle fibres'],cx=PADX+pw*.5,cw=pw*.46,bh=38,gap=14;
+  labels.forEach((l,i)=>{const by=ay+14+i*(bh+gap);const act=e*(.5+.5*Math.sin(performance.now()/260-i*1.1));
+    ctx.save();rrect(cx,by,cw,bh,8);ctx.fillStyle=C.bg;ctx.fill();ctx.globalAlpha=.1+.6*act;ctx.fillStyle=C.mus;ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle=C.rule;ctx.stroke();ctx.restore();
+    txt(l,cx+cw/2,by+bh/2+4,{a:'center',w:600});
+    if(i<3){arrowTo(cx+cw/2,by+bh+1,cx+cw/2,by+bh+gap-1,C.mute);if(e>.03){const p=((performance.now()/500+i*.3)%1);ctx.fillStyle=C.mus;ctx.beginPath();ctx.arc(cx+cw/2,by+bh+p*gap,2.5,0,7);ctx.fill()}}});
+  const r=plotR(ay+ah+34,120),o={lo:0,hi:1,ticks:[0,.5,1],title:'Effort over three curls',sub:'0 = relaxed, 1 = hardest'};grid(r,o);
+  series(SIM.eff,SIM.FS,r,{lo:0,hi:1,color:C.mus,lw:1.6});head(r);taxis(r);
+  SIM.REPS.forEach((q,i)=>txt('Curl '+(i+1),tx(r,(q.t0+q.t1)/2),r.y+14,{a:'center',s:F-1,c:C.mute}))};
+
+S[1]=function(){let y=PADX+16;const names=SIM.MU,rw=W-PADX*2-40,rh=17,rx=PADX+40,rr={x:rx,y:y,w:rw,h:names.length*rh};
+  grid(rr,{lo:0,hi:1,ticks:[],title:'Motor units firing',sub:'small units fire first'});
+  names.forEach((u,i)=>{const yy=y+i*rh+rh/2;txt('MU '+(i+1),rx-5,yy+3,{a:'right',s:F-2,f:MONO,c:C.mute});
+    ctx.save();ctx.strokeStyle=C.mus;ctx.lineWidth=1.4;ctx.beginPath();for(const t of u.spikes){if(t>T)break;const x=Math.round(tx(rr,t))+.5;ctx.moveTo(x,yy-5);ctx.lineTo(x,yy+5)}ctx.stroke();ctx.restore()});
+  head(rr);y+=rr.h+44;
+  const r2=plotR(y,104),o2={lo:-2,hi:2,ticks:[-2,0,2],title:'What the skin sees, all units summed',sub:'millivolts'};grid(r2,o2);
+  series(SIM.emg,SIM.FS,r2,{lo:-2,hi:2,color:C.sig,k:.001,lw:1});head(r2);y+=r2.h+44;
+  const r3=plotR(y,92),o3={lo:-2,hi:2,ticks:[-2,0,2],title:'Zoom: the last 150 ms',sub:'each overlapping pulse adds in'};grid(r3,o3);
+  const t1=Math.max(0,T-.15),i0=Math.floor(t1*SIM.FS),i1=Math.floor(T*SIM.FS);ctx.save();ctx.beginPath();ctx.rect(r3.x,r3.y,r3.w,r3.h);ctx.clip();ctx.beginPath();
+  for(let i=i0;i<=i1;i++){const x=r3.x+(i-i0)/(.15*SIM.FS)*r3.w,yy=r3.y+r3.h*(1-(SIM.emg[i]*.001+2)/4);i===i0?ctx.moveTo(x,yy):ctx.lineTo(x,yy)}
+  ctx.strokeStyle=C.sig;ctx.lineWidth=1.4;ctx.stroke();ctx.restore();taxis(r2)};
+
+S[2]=function(){let y=PADX;const pw=W-PADX*2;pane(PADX,y,pw,140);
+  const ax=PADX+16,aw=pw*.62,ay=y+52,ah=56;ctx.save();rrect(ax,ay,aw,ah,28);ctx.fillStyle=C.bg;ctx.fill();ctx.strokeStyle=C.rule;ctx.stroke();ctx.restore();
+  txt('Biceps (side view, skin surface)',ax+aw/2,ay+ah/2+4,{a:'center',s:F-1,c:C.mute});
+  const e1=ax+aw*.3,e2=ax+aw*.5,er=ay+ah/2,rx=ax+aw*.86;
+  [[e1,'+'],[e2,'−']].forEach(([x,s])=>{ctx.beginPath();ctx.arc(x,ay,9,0,7);ctx.fillStyle=C.sig;ctx.fill();txt(s,x,ay+4,{a:'center',w:600,c:C.bg})});
+  ctx.fillStyle=C.mute;rrect(rx-8,ay-8,16,16,3);ctx.fill();txt('REF',rx,ay+22,{a:'center',s:F-2,c:C.mute});txt('bony spot',rx,ay+34,{a:'center',s:F-2,c:C.mute});
+  txt('2 cm apart',(e1+e2)/2,ay+ah+16,{a:'center',s:F-1,c:C.mute});
+  ctx.save();ctx.strokeStyle=C.hum;ctx.lineWidth=1.5;for(let j=0;j<3;j++){ctx.globalAlpha=.8;ctx.beginPath();const bx=ax+aw*.05+j*aw*.3;for(let q=0;q<=40;q++){const px=bx+q*2.2,py=y+14+Math.sin(q*.5-performance.now()/150)*4;q?ctx.lineTo(px,py):ctx.moveTo(px,py)}ctx.stroke()}ctx.restore();
+  txt('50 Hz mains hum from room wiring reaches both electrodes',ax+aw*.5,y+34,{a:'center',s:F-1,c:C.hum});
+  box(PADX+pw*.76,y+60,pw*.21,44,['To INA333','difference only'],{});arrowTo(e2+9,ay+4,PADX+pw*.76,y+82,C.sig);
+  y+=140+34;let r=plotR(y,84),o={lo:-3,hi:9,ticks:[0,6],title:'Electrode +',sub:'mV, mostly hum'};grid(r,o);series(SIM.A,SIM.FS,r,{lo:-3,hi:9,color:C.hum,k:.001});head(r);
+  y+=84+34;r=plotR(y,84);grid(r,o={lo:-3,hi:9,ticks:[0,6],title:'Electrode −',sub:'mV, the same hum'});series(SIM.B,SIM.FS,r,{lo:-3,hi:9,color:C.hum,k:.001});head(r);
+  y+=84+34;r=plotR(y,92);grid(r,o={lo:-2,hi:6,ticks:[0,2,4],title:'Difference (+ minus −)',sub:'mV, hum gone, muscle left'});series(SIM.D,SIM.FS,r,{lo:-2,hi:6,color:C.sig,k:.001});head(r);taxis(r)};
+
+S[3]=function(){let y=PADX;const pw=W-PADX*2;pane(PADX,y,pw,150);const yc=y+78,x0=PADX+12,xa=PADX+pw*.5,xt=xa+4;
+  txt('Electrode +',x0,yc-34,{w:600,s:F-1});txt('Electrode −',x0,yc+44,{w:600,s:F-1});
+  const fx=PADX+pw*.2;[[yc-24,'−'],[yc+24,'']].forEach((a,i)=>{const yy=i?yc+26:yc-26;ctx.save();ctx.strokeStyle=C.sig;ctx.lineWidth=1.8;line(x0,yy,fx,yy);zig(fx,yy,fx+34,yy,4,5);line(fx+34,yy,xa-4,yy);ctx.restore();ctx.save();ctx.strokeStyle=C.mute;line(fx+17,yy+8,fx+17,yy+16);line(fx+9,yy+16,fx+25,yy+16);ctx.restore()});
+  txt('1 kΩ + 1 nF',fx+17,yc-42,{a:'center',s:F-2,c:C.mute});
+  tri(xa-4,yc-56,92,112,C.ink);txt('INA333',xa+30,yc+4,{a:'center',w:600,s:F});txt('+',xa+4,yc-20,{s:F+2,c:C.sig});txt('−',xa+4,yc+30,{s:F+2,c:C.sig});
+  txt('Rg 11 kΩ',xa+34,yc+72,{a:'center',s:F-1,c:C.mute});txt('REF = 1.65 V',xa+34,yc-62,{a:'center',s:F-1,c:C.mute});
+  arrowTo(xa+88,yc,PADX+pw-10,yc,C.sig);txt('×10',PADX+pw-30,yc-10,{a:'center',w:600,c:C.sig});
+  txt('gain = 1 + 100 kΩ ÷ Rg ≈ 10.1',PADX+pw-12,y+138,{a:'right',s:F-1,c:C.mute});
+  y+=150+34;let r=plotR(y,112),o={lo:-2,hi:6,ticks:[0,2,4],title:'Input: difference of the electrodes',sub:'mV'};grid(r,o);series(SIM.D,SIM.FS,r,{lo:-2,hi:6,color:C.sig,k:.001});head(r);
+  y+=112+34;r=plotR(y,130);o={lo:-20,hi:60,ticks:[0,20,40],title:'Output: ten times larger, centred on 1.65 V',sub:'mV above 1.65 V'};grid(r,o);series(SIM.ina,SIM.FS,r,{lo:-20,hi:60,color:C.sig});head(r);taxis(r)};
+
+S[4]=function(){let y=PADX;const pw=W-PADX*2;pane(PADX,y,pw,96);const yc=y+38,x0=PADX+16,xc=PADX+pw*.34;
+  txt('from INA333',x0,yc-12,{s:F-1,c:C.mute});ctx.save();ctx.strokeStyle=C.ink;ctx.lineWidth=1.8;line(x0,yc,xc-6,yc);line(xc+6,yc,PADX+pw*.7,yc);line(xc-6,yc-14,xc-6,yc+14);line(xc+6,yc-14,xc+6,yc+14);
+  line(PADX+pw*.55,yc,PADX+pw*.55,yc+14);zig(PADX+pw*.55,yc+14,PADX+pw*.55,yc+46,4,6);ctx.restore();
+  txt('C1 1 µF',xc,yc-22,{a:'center',w:600,s:F-1});txt('R9 8.2 kΩ',PADX+pw*.55+14,yc+34,{w:600,s:F-1});txt('to 1.65 V',PADX+pw*.55+14,yc+50,{s:F-2,c:C.mute});
+  arrowTo(PADX+pw*.7,yc,PADX+pw-14,yc,C.sig);txt('to gain stage',PADX+pw-14,yc-12,{a:'right',s:F-1,c:C.mute});
+  txt('cut-off ≈ 19 Hz',PADX+pw-12,y+88,{a:'right',s:F-1,c:C.hum,w:600});
+  y+=96+34;let r=plotR(y,150),o={lo:-20,hi:60,ticks:[0,20,40],title:'Before: offset and slow drift ride along',sub:'mV above 1.65 V'};grid(r,o);series(SIM.ina,SIM.FS,r,{lo:-20,hi:60,color:C.hum});head(r);
+  txt('electrode offset',tx(r,.2),r.y+r.h*(1-(31-o.lo)/(o.hi-o.lo))-8,{s:F-1,c:C.hum});txt('drift when you move',tx(r,3.6),r.y+14,{s:F-1,c:C.hum});
+  y+=150+34;r=plotR(y,150);o={lo:-30,hi:30,ticks:[-20,0,20],title:'After: centred, muscle only',sub:'mV'};grid(r,o);series(SIM.hp,SIM.FS,r,{lo:-30,hi:30,color:C.sig});head(r);taxis(r)};
+
+S[5]=function(){let y=PADX;const pw=W-PADX*2;pane(PADX,y,pw,152);const yc=y+66,xa=PADX+pw*.4;
+  txt('from high-pass',PADX+14,yc-24,{s:F-1,c:C.mute});arrowTo(PADX+14,yc-12,xa-4,yc-12,C.sig);
+  tri(xa,yc-48,80,96,C.ink);txt('OPA2333 B',xa+30,yc+4,{a:'center',w:600,s:F-1});
+  ctx.save();ctx.strokeStyle=C.ink;ctx.lineWidth=1.6;line(xa+80,yc,PADX+pw-60,yc);line(xa+96,yc,xa+96,y+14);line(xa+96,y+14,xa-14,y+14);line(xa-14,y+14,xa-14,yc+12);line(xa-14,yc+12,xa,yc+12);ctx.restore();
+  txt('R7 49.9 kΩ ∥ C2 6.8 nF',xa+40,y+10,{a:'center',s:F-2,c:C.mute});
+  ctx.save();ctx.strokeStyle=C.ink;ctx.lineWidth=1.6;line(xa-14,yc+12,xa-14,yc+34);zig(xa-14,yc+34,xa-14,yc+58,3,5);ctx.restore();txt('R8 1 kΩ to 1.65 V',xa-22,yc+52,{a:'right',s:F-2,c:C.mute});
+  arrowTo(PADX+pw-60,yc,PADX+pw-10,yc,C.sig);txt('×51',PADX+pw-34,yc-10,{a:'center',w:600,c:C.sig});
+  txt('gain = 1 + 49.9 ÷ 1 ≈ 51   (total ≈ 513)',PADX+pw-12,y+144,{a:'right',s:F-1,c:C.mute});
+  y+=152+34;let r=plotR(y,110),o={lo:-30,hi:30,ticks:[-20,0,20],title:'Input to this stage',sub:'mV above 1.65 V'};grid(r,o);series(SIM.hp,SIM.FS,r,{lo:-30,hi:30,color:C.sig});head(r);
+  y+=110+34;r=plotR(y,190);o={lo:0,hi:3.3,ticks:[0,1.65,3.3],title:'Output of the gain stage',sub:'volts',fmt:v=>v+' V'};grid(r,o);
+  hline(r,o,1.65,C.mute,[3,4],'centre');series(SIM.gout,SIM.FS,r,{lo:0,hi:3.3,color:C.sig});head(r);taxis(r)};
+
+S[6]=function(){let y=PADX;const pw=W-PADX*2,k=Math.min(SIM.N1-1,Math.floor(T*1000)),c=SIM.counts[k];pane(PADX,y,pw,84);
+  txt('ADS1015 reads A0 − A1 right now',PADX+14,y+24,{s:F-1,c:C.mute});
+  txt(String(c),PADX+14,y+64,{f:MONO,s:34,w:500,c:C.acc});txt('counts',PADX+14+String(c).length*20+10,y+64,{s:F+1,c:C.mute});
+  const x2=PADX+pw*.5;txt('= '+c+' mV at the ADC',x2,y+36,{f:MONO,s:F+1});txt('≈ '+(c*1000/SIM.GAIN).toFixed(0)+' µV at the skin',x2,y+62,{f:MONO,s:F+1,c:C.sig});
+  y+=84+34;let r=plotR(y,170),o={lo:-600,hi:600,ticks:[-400,0,400],title:'Zoom: the last 40 ms, analog line and 1 kHz samples',sub:'counts (mV at the ADC)'};grid(r,o);
+  const w=.04,t1=Math.max(0,T-w),i0=Math.floor(t1*SIM.FS),i1=Math.floor(T*SIM.FS),sx=t=>r.x+(t-(T-w))/w*r.w,sv=v=>r.y+r.h*(1-(v-o.lo)/(o.hi-o.lo));
+  ctx.save();ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();ctx.beginPath();for(let i=i0;i<=i1;i++){const x=sx(i/SIM.FS),yy=sv((SIM.gout[i]-1.65)*1000);i===i0?ctx.moveTo(x,yy):ctx.lineTo(x,yy)}ctx.strokeStyle=C.sig;ctx.lineWidth=1.6;ctx.stroke();
+  const ks=Math.ceil(t1*1000),ke=Math.floor(T*1000);ctx.beginPath();for(let kk=ks;kk<=ke;kk++){const x=sx(kk/1000),yy=sv(SIM.counts[kk]);kk===ks?ctx.moveTo(x,yy):ctx.lineTo(x,yy)}ctx.strokeStyle=C.acc;ctx.globalAlpha=.5;ctx.lineWidth=1.2;ctx.stroke();ctx.globalAlpha=1;
+  ctx.fillStyle=C.acc;for(let kk=ks;kk<=ke;kk++){ctx.beginPath();ctx.arc(sx(kk/1000),sv(SIM.counts[kk]),3.2,0,7);ctx.fill()}ctx.restore();
+  txt('1 ms',r.x+r.w-6,r.y+r.h-6,{a:'right',s:F-1,c:C.mute});
+  y+=170+34;r=plotR(y,150);o={lo:-2048,hi:2048,ticks:[-2047,0,2047],title:'Counts over the whole recording',sub:'full scale is ±2047',fmt:v=>v};grid(r,o);
+  series(SIM.counts,SIM.FS1,r,{lo:-2048,hi:2048,color:C.acc});head(r);taxis(r)};
+
+S[7]=function(){let y=PADX;const pw=W-PADX*2,k=Math.min(SIM.N1-1,Math.floor(T*1000)),narrow=W<640;
+  const labels=[['ADS1015','newest result'],['loop()','every 1000 µs'],['Buffer','2048 samples'],['sendTask','every 10 ms'],['Bluetooth','or USB']];
+  const bh=narrow?44:62,gap=narrow?16:22;
+  if(narrow){labels.forEach((l,i)=>{const by=y+i*(bh+gap);box(PADX,by,pw,bh,l,{fill:i===1||i===3?C.bg:C.soft,stroke:i===1||i===3?C.acc:C.rule});if(i<4){arrowTo(PADX+pw/2,by+bh+1,PADX+pw/2,by+bh+gap-1,C.acc);const p=(performance.now()/450+i*.25)%1;ctx.fillStyle=C.acc;ctx.beginPath();ctx.arc(PADX+pw/2,by+bh+p*gap,2.6,0,7);ctx.fill()}});y+=5*bh+4*gap+30}
+  else{const bw=(pw-4*gap)/5;labels.forEach((l,i)=>{const bx=PADX+i*(bw+gap);box(bx,y,bw,bh,l,{fill:i===1||i===3?C.bg:C.soft,stroke:i===1||i===3?C.acc:C.rule});if(i<4){arrowTo(bx+bw+1,y+bh/2,bx+bw+gap-1,y+bh/2,C.acc);const p=(performance.now()/450+i*.25)%1;ctx.fillStyle=C.acc;ctx.beginPath();ctx.arc(bx+bw+p*gap,y+bh/2,2.6,0,7);ctx.fill()}});y+=bh+30}
+  txt('Sampling and sending are separate jobs.',PADX,y-8,{s:F-1,c:C.mute});y+=14;
+  terminal(PADX,y,pw,narrow?210:200,k,87000000,'serial output: microseconds,counts');y+=(narrow?210:200)+18;
+  const r=plotR(y+16,narrow?96:92),o={lo:0,hi:2,ticks:[],title:'Ticks: one reading every 1000 µs'};grid(r,o);
+  ctx.save();ctx.strokeStyle=C.acc;ctx.lineWidth=1.5;const t0=Math.floor(T*1000)-24;for(let j=0;j<25;j++){const x=r.x+(j+.5)/25*r.w;line(x,r.y+r.h-8,x,r.y+r.h-8-Math.min(r.h-22,Math.abs(SIM.counts[Math.max(0,t0+j)])/700*(r.h-22)))}ctx.restore();
+  txt('each bar is the size of one reading',r.x+r.w,r.y+r.h+14,{a:'right',s:F-1,c:C.mute})};
+
+S[8]=function(){let y=PADX;const pw=W-PADX*2,k=Math.min(SIM.N1-1,Math.floor(T*1000)),now=performance.now();pane(PADX,y,pw,190);
+  const ex=PADX+16,ew=Math.min(120,pw*.28),ey=y+44,lx=PADX+pw-16-ew;
+  box(ex,ey,ew,70,['ESP32','on battery'],{fill:C.bg,stroke:C.acc});box(lx,ey,ew,70,['Laptop','/dev/rfcomm0'],{fill:C.bg,stroke:C.acc});
+  const mx1=ex+ew+10,mx2=lx-10;ctx.save();ctx.strokeStyle=C.acc;ctx.lineWidth=1.6;for(let i=0;i<3;i++){const a=((now/900+i/3)%1);ctx.globalAlpha=1-a;ctx.beginPath();ctx.arc(ex+ew,ey+35,10+a*40,-.7,.7);ctx.stroke()}ctx.restore();
+  for(let i=0;i<4;i++){const p=((now/1100+i/4)%1),px=mx1+p*(mx2-mx1-40);ctx.save();ctx.globalAlpha=Math.sin(p*Math.PI);rrect(px,ey+8+(i%2)*28,40,24,6);ctx.fillStyle=C.acc;ctx.fill();ctx.restore();txt('10',px+20,ey+24+(i%2)*28,{a:'center',s:F-2,c:C.bg,w:600})}
+  txt('about 100 batches a second, 10 samples each',PADX+pw/2,y+22,{a:'center',s:F,c:C.mute});
+  txt('Bluetooth serial profile',PADX+pw/2,y+150,{a:'center',s:F,c:C.mute});txt('about 11 kB per second',PADX+pw/2,y+170,{a:'center',s:F,w:600});
+  y+=190+16;txt('Rule for body recordings: battery and wireless only. No USB cable to a computer while electrodes are on you.',PADX,y+10,{s:F-1,c:C.hum,w:600});y+=26;
+  const th=W<640?210:190;terminal(PADX,y,pw,th,k,87000000,'laptop receives: microseconds,counts');y+=th+18;
+  const r=plotR(y+16,90),o={lo:-1000,hi:1000,ticks:[-500,0,500],title:'The stream, as it arrives',sub:'counts',fmt:v=>v};grid(r,o);series(SIM.counts,SIM.FS1,r,{lo:-1000,hi:1000,color:C.acc});head(r);taxis(r)};
+
+S[9]=function(){let y=PADX+16;const hh=W<560?76:84,list=[
+  ['Raw, converted to µV at the skin','µV (counts × 1000 ÷ 513)',SIM.uv,{lo:-2200,hi:2200,ticks:[-1500,0,1500],color:C.acc,fs:1}],
+  ['Band-pass 20 to 450 Hz','µV',SIM.filt,{lo:-2200,hi:2200,ticks:[-1500,0,1500],color:C.sig,fs:1}],
+  ['Rectified, absolute value','µV',SIM.rect,{lo:0,hi:2200,ticks:[0,1000,2000],color:C.sig,fs:1}],
+  ['Envelope, 100 ms RMS','µV',SIM.env,{lo:0,hi:650,ticks:[0,300,600],color:C.mus,fs:1,lw:2}]];
+  list.forEach((p,i)=>{const r=plotR(y,hh),o={lo:p[3].lo,hi:p[3].hi,ticks:p[3].ticks,title:p[0],sub:p[1],fmt:v=>v};grid(r,o);series(p[2],SIM.FS1,r,{lo:o.lo,hi:o.hi,color:p[3].color,lw:p[3].lw});head(r);if(i===3)taxis(r);y+=hh+36});
+  const x=PADX+40;txt('Same chain every millisecond: filter, rectify, average the last 100 samples.',x,y-12,{s:F-1,c:C.mute})};
+
+S[10]=function(){let y=PADX+16;const pw=W-PADX*2;
+  let r=plotR(y,120),o={lo:0,hi:650,ticks:[0,300,600],title:'Envelope from the filter stage',sub:'µV',fmt:v=>v};grid(r,o);series(SIM.env,SIM.FS1,r,{lo:0,hi:650,color:C.mus,lw:1.8});
+  hline(r,o,SIM.rest,C.mute,[3,4]);hline(r,o,SIM.mvc,C.mus,[6,4],'max (hardest squeeze) = 100%');txt('rest = 0%',r.x+6,r.y+r.h-6,{s:F-1,c:C.mute});head(r);
+  y+=120+38;r=plotR(y,150);o={lo:0,hi:110,ticks:[0,50,100],title:'% of maximum, with rep detection',sub:'start at 10%, end below 7%',fmt:v=>v};grid(r,o);
+  SIM.reps.forEach(q=>{if(T<q.t0)return;const te=Math.min(T,q.t1);ctx.save();ctx.globalAlpha=.16;ctx.fillStyle=C.mus;ctx.fillRect(tx(r,q.t0),r.y,tx(r,te)-tx(r,q.t0),r.h);ctx.restore()});
+  hline(r,o,10,C.mute,[3,4],'10%');series(SIM.pct,SIM.FS1,r,{lo:0,hi:110,color:C.mus,lw:1.8});head(r);taxis(r);
+  SIM.reps.forEach((q,i)=>{if(T>=q.t1)txt('Rep '+(i+1),tx(r,(q.t0+q.t1)/2),r.y+14,{a:'center',w:600,s:F-1,c:C.mus})});
+  y+=150+44;const cw=pw/4,ty=y;pane(PADX,ty,pw,150);['Rep','Peak','Mean','Median freq'].forEach((h,i)=>txt(h,PADX+14+i*cw,ty+22,{s:F-1,c:C.mute,w:600}));
+  SIM.reps.forEach((q,i)=>{const yy=ty+50+i*30,done=T>=q.t1;const row=[String(i+1),done?q.peak.toFixed(0)+' %':'…',done?q.mean.toFixed(0)+' %':'…',done?q.mdf.toFixed(0)+' Hz':'…'];row.forEach((c,j)=>txt(c,PADX+14+j*cw,yy,{f:MONO,s:F+1,c:done?(j===3?C.sig:C.ink):C.mute,w:done&&j===3?500:400}))});
+  txt('Median frequency falls rep by rep as the muscle tires.',PADX+14,ty+142,{s:F-1,c:C.mute})};
+
+S[11]=function(){let y=PADX;const pw=W-PADX*2,k=Math.min(SIM.N1-1,Math.floor(T*1000)),p=SIM.pct[k],done=SIM.reps.filter(q=>T>=q.t1),last=done[done.length-1];
+  const cw=Math.min(pw,W<640?pw:pw*.64),ch=262;ctx.save();rrect(PADX,y,cw,ch,12);ctx.fillStyle=C.bg;ctx.fill();ctx.strokeStyle=C.rule;ctx.stroke();ctx.restore();
+  txt('Muscle 1',PADX+16,y+26,{w:600,s:F+2});txt('rep threshold 10%',PADX+cw-16,y+26,{a:'right',s:F-1,c:C.mute});
+  txt(String(Math.round(Math.min(p,999))),PADX+16,y+76,{f:DISP,s:50,w:600});txt('% max',PADX+16+String(Math.round(p)).length*22+14,y+76,{s:F,c:C.mute});
+  const r={x:PADX+16,y:y+92,w:cw-32,h:84};ctx.save();ctx.fillStyle=C.soft;ctx.fillRect(r.x,r.y,r.w,r.h);ctx.restore();
+  const t0=Math.max(0,T-6),i0=Math.floor(t0*1000),i1=k;ctx.save();ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();ctx.beginPath();
+  for(let i=i0;i<=i1;i+=2){const x=r.x+(i-i0)/6000*r.w,yy=r.y+r.h*(1-Math.min(110,SIM.pct[i])/110);i===i0?ctx.moveTo(x,yy):ctx.lineTo(x,yy)}ctx.strokeStyle=C.sig;ctx.lineWidth=1.6;ctx.stroke();ctx.restore();
+  hline(r,{lo:0,hi:110},10,C.mus,[3,4]);
+  const sw=(cw-32)/4,sy=y+ch-34,vals=[[String(done.length),'reps'],[last?last.peak.toFixed(0)+'%':'-','last peak'],[last?last.mean.toFixed(0)+'%':'-','last mean'],[last?last.mdf.toFixed(0)+' Hz':'-','med. freq']];
+  vals.forEach((v,i)=>{txt(v[0],PADX+16+i*sw,sy,{w:600,s:F+3});txt(v[1],PADX+16+i*sw,sy+16,{s:F-1,c:C.mute})});
+  let ry=y+(W<640?ch+16:0),rx=W<640?PADX:PADX+cw+14,rw=W<640?pw:pw-cw-14;
+  ctx.save();rrect(rx,ry,rw,W<640?96:112,10);ctx.fillStyle=C.soft;ctx.fill();ctx.restore();
+  const blink=.5+.5*Math.sin(performance.now()/400);ctx.fillStyle=C.mus;ctx.globalAlpha=.4+.6*blink;ctx.beginPath();ctx.arc(rx+18,ry+24,6,0,7);ctx.fill();ctx.globalAlpha=1;txt('Record',rx+32,ry+28,{w:600});
+  txt('session_…_raw.csv',rx+14,ry+54,{f:MONO,s:F-1,c:C.mute});txt('session_…_reps.csv',rx+14,ry+74,{f:MONO,s:F-1,c:C.mute});
+  const cy=ry+(W<640?96:112)+14;ctx.save();rrect(rx,cy,rw,W<640?120:ch-126,10);ctx.fillStyle=C.soft;ctx.fill();ctx.restore();
+  txt('Muscle comparison',rx+14,cy+24,{w:600});['Balance','Co-activation','Onset lag'].forEach((l,i)=>txt(l,rx+14,cy+48+i*18,{s:F-1,c:C.mute}));txt('needs a second channel',rx+14,cy+48+3*18,{s:F-2,c:C.hum});
+  const by=y+ch+(W<640?96+14+120+26:20);txt('Muscles 2 to 4 stay empty until you add channels.',PADX,by,{s:F-1,c:C.mute});
+  txt('Served at localhost:8000, about 20 updates a second.',PADX,by+18,{s:F-1,c:C.mute})};
+
+/* ---------- UI ---------- */
+const $=id=>document.getElementById(id);
+function buildRail(){const rail=$('rail');rail.innerHTML='';ZONES.forEach(z=>{const d=document.createElement('div');d.className='zone';d.innerHTML='<h2>'+z+'</h2><div class="chips"></div>';const c=d.querySelector('.chips');
+  STAGES.forEach((s,i)=>{if(s.zone!==z)return;const b=document.createElement('button');b.type='button';b.className='chip';b.dataset.i=i;b.innerHTML='<b>'+(i+1)+'</b>'+s.short;b.onclick=()=>go(i);c.appendChild(b)});rail.appendChild(d)})}
+function paintRail(){document.querySelectorAll('.chip').forEach(b=>{const i=+b.dataset.i;b.className='chip'+(visited.has(i)&&i!==step?' done':'');if(i===step){b.setAttribute('aria-current','step')}else b.removeAttribute('aria-current')});
+  const cur=document.querySelector('.chip[aria-current]');if(cur&&cur.scrollIntoView)try{const rail=$('rail');rail.scrollLeft=Math.max(0,cur.offsetLeft-rail.clientWidth/2+cur.clientWidth/2)}catch(e){}}
+function go(i,keepHash){step=(i+STAGES.length)%STAGES.length;visited.add(step);const s=STAGES[step];
+  $('badge').textContent='Stage '+(step+1)+' of '+STAGES.length+' · '+s.zone;$('title').textContent=s.title;$('body').textContent=s.body;
+  $('build').innerHTML=s.build.map(x=>'<li></li>').join('');$('nums').innerHTML=s.nums.map(x=>'<li></li>').join('');
+  [...$('build').children].forEach((li,j)=>li.textContent=s.build[j]);[...$('nums').children].forEach((li,j)=>li.textContent=s.nums[j]);
+  cv.setAttribute('aria-label','Animated diagram for stage '+(step+1)+': '+s.title);paintRail();layout();if(!keepHash){try{history.replaceState(null,'','#stage-'+(step+1))}catch(e){}}}
+function setPlaying(p){playing=p;$('play').textContent=p?'Pause':'Play'}
+$('play').onclick=()=>setPlaying(!playing);
+$('prev').onclick=$('prev2').onclick=()=>go(step-1);$('next').onclick=$('next2').onclick=()=>go(step+1);
+$('speed').onchange=e=>speed=+e.target.value;$('tour').onchange=e=>{tour=e.target.checked;if(tour){setPlaying(true);go(0);T=0}};
+$('scrub').oninput=e=>{T=+e.target.value;$('tread').textContent=T.toFixed(2)+' s'};
+document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.key==='ArrowRight')go(step+1);if(e.key==='ArrowLeft')go(step-1);if(e.key===' '&&e.target===document.body){e.preventDefault();setPlaying(!playing)}});
+function fromHash(){const m=/^#stage-(\d+)$/.exec(location.hash);return m?Math.min(STAGES.length,Math.max(1,+m[1]))-1:0}
+addEventListener('hashchange',()=>go(fromHash(),true));
+new ResizeObserver(()=>layout()).observe(cv.parentElement);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',readColors);
+new MutationObserver(readColors).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+let last=performance.now();
+function loop(now){const dt=Math.min(.1,(now-last)/1000);last=now;if(playing){T+=dt*speed;if(T>=DUR){T-=DUR;if(tour){if(step<STAGES.length-1)go(step+1);else{tour=false;$('tour').checked=false}}}}
+  readColorsOnce();ctx.clearRect(0,0,W,H);S[step]();$('scrub').value=T;$('tread').textContent=T.toFixed(2)+' s';requestAnimationFrame(loop)}
+let colorsRead=false;function readColorsOnce(){if(!colorsRead){readColors();colorsRead=true}}
+readColors();buildRail();go(fromHash(),true);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{});
+requestAnimationFrame(loop);
+</script>
