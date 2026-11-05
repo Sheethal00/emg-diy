@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Breadboard Bench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a workbench. Selectors on top, ESD mat with hardware on the left, step sheet on the right, code and serial below. */
+:root{
+  --bg:#e6ebe8;--panel:#f7f9f7;--ink:#172524;--muted:#526462;--line:#c4cfcb;--mat:#55716f;
+  --accent:#8f5400;--accent-fill:#f3a722;--on-accent:#231500;--ok:#17734a;--bad:#ad2a1e;--soft:#eef2ef;--warnbg:#fbe9e4;--expbg:#fdf3dc;--code:#1b2928;--codefg:#dcebe5;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;--body:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141d1c;--panel:#1c2726;--ink:#e6efeb;--muted:#9db0ab;--line:#35453f;--mat:#2d4442;
+  --accent:#f6b444;--accent-fill:#f3a722;--on-accent:#231500;--ok:#5fd29c;--bad:#ff8d7e;--soft:#243130;--warnbg:#3b211d;--expbg:#33290f;--code:#0f1716;--codefg:#dcebe5;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141d1c;--panel:#1c2726;--ink:#e6efeb;--muted:#9db0ab;--line:#35453f;--mat:#2d4442;
+  --accent:#f6b444;--accent-fill:#f3a722;--on-accent:#231500;--ok:#5fd29c;--bad:#ff8d7e;--soft:#243130;--warnbg:#3b211d;--expbg:#33290f;--code:#0f1716;--codefg:#dcebe5;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:1420px;margin:auto;display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+header{display:flex;flex-wrap:wrap;gap:12px 22px;align-items:flex-end}
+h1{font:700 30px/1 var(--display);letter-spacing:.01em;margin:0 8px 3px 0}
+label.f{display:grid;gap:2px;font-size:12px;font-weight:600;color:var(--muted);min-width:0}
+label.f{max-width:100%}label.f select{width:100%}
+select{font:500 14px var(--body);padding:7px 8px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink);max-width:100%}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:none;color:var(--ink);font:500 14px var(--body);padding:7px 11px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent-fill);color:var(--on-accent);font-weight:600}
+button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.timeline{display:flex;gap:4px;overflow-x:auto;padding-block:2px}
+.timeline button{flex:none;display:flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:4px;padding:4px 9px 4px 5px;font:500 13px var(--body);cursor:pointer;max-width:190px}
+.timeline span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timeline b{font:500 12px var(--mono);width:20px;height:20px;line-height:20px;text-align:center;border-radius:50%;background:var(--soft);color:var(--ink);flex:none}
+.timeline .done b{background:var(--ok);color:var(--panel)}
+.timeline .cur{border-color:var(--accent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--accent)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:12px;align-items:start}
+.left{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;min-width:0}
+.stage{background:var(--mat);border-radius:6px;min-width:0;overflow:hidden}
+.scroll{overflow-x:auto}
+#svg{display:block;width:100%;min-width:760px;height:auto;touch-action:manipulation;user-select:none}
+#svg.full{min-width:1240px}
+.probe{display:flex;flex-wrap:wrap;gap:4px 14px;background:var(--panel);border:1px solid var(--line);border-top:0;padding:7px 12px;font-size:13px;border-radius:0 0 6px 6px;min-height:36px;align-items:center}
+.probe .v{font:500 14px var(--mono);color:var(--accent)}
+.tools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:13px}
+.tools label{display:flex;gap:5px;align-items:center;cursor:pointer}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;display:grid;gap:12px;min-width:0}
+.eyebrow{font:500 12px var(--mono);color:var(--muted)}
+h2{font:600 25px/1.12 var(--display);margin:2px 0 0;text-wrap:balance}
+.do{font-weight:500;margin:0}.why{margin:0;color:var(--muted);font-size:14px}
+.expect{background:var(--expbg);border-radius:4px;padding:10px 12px;display:grid;gap:8px}
+.expect h3,.sec{font:600 12px var(--body);letter-spacing:.06em;text-transform:uppercase;margin:0;color:var(--accent)}
+.sec{color:var(--muted)}
+.expect p{margin:0;font-size:14px}
+table.ck{width:100%;border-collapse:collapse;font-size:13px}
+table.ck th{font-weight:500;color:var(--muted);text-align:left;padding:2px 6px 2px 0;border-bottom:1px solid var(--line)}
+table.ck td{padding:4px 6px 4px 0;border-bottom:1px solid var(--line);vertical-align:top}
+table.ck td.n{font:13px var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pass{color:var(--ok);font-weight:600}.fail{color:var(--bad);font-weight:600}.wait{color:var(--muted)}
+.mistake{font-size:13px;color:var(--muted);margin:0}.mistake b{color:var(--ink);font-weight:600}
+.warn{background:var(--warnbg);color:var(--bad);border-radius:4px;padding:8px 11px;font-size:14px;font-weight:500}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--soft);color:var(--ink);padding:8px 13px;border-radius:4px;font:500 14px var(--body);cursor:pointer}
+.btn.pri{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--on-accent);font-weight:600;flex:1}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sm{padding:5px 9px;font-size:13px}.btn.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.ctrl{display:grid;gap:8px}.ctrl label{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;font-size:13px}
+.ctrl input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--accent-fill)}
+.feedback{font-size:14px;border-radius:4px;padding:8px 11px;background:var(--soft)}
+.feedback.bad{background:var(--warnbg);color:var(--bad)}
+.feedback.good{color:var(--ok);font-weight:500}
+.lower{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:12px}
+.term{background:var(--code);color:var(--codefg);border-radius:6px;min-width:0;display:flex;flex-direction:column;min-height:170px}
+.term .bar{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 12px;font:600 12px var(--body);letter-spacing:.05em;text-transform:uppercase}
+.term .bar button{background:none;border:1px solid currentColor;color:inherit;border-radius:3px;font:500 12px var(--body);padding:2px 8px;cursor:pointer}
+.term pre{margin:0;padding:0 12px 12px;font:12.5px/1.5 var(--mono);overflow:auto;max-height:290px;flex:1}
+.free-note{font-size:14px;margin:0}
+.viewbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:13px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.viewbar label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.viewbar input[type=range]{width:96px;accent-color:var(--accent-fill)}
+.viewbar small{flex-basis:100%;color:var(--muted);font-size:12.5px}
+.scroll.rot{position:relative;overflow:hidden}
+.scroll.rot #svg{position:absolute;left:50%;top:50%;min-width:0!important;transform-style:flat}
+#svg.dragging{cursor:grab;touch-action:none}
+#svg.under text{display:none}
+#svg.under .stripbar{fill:rgba(196,122,38,.85)}
+#svg.under [data-el]{opacity:.22}
+.meter{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:13px}
+.lcd{font:500 24px/1 var(--mono);background:#b9c6a8;color:#1b2415;padding:7px 10px;border-radius:3px;min-width:104px;text-align:right;font-variant-numeric:tabular-nums}
+.meter small{font-size:12.5px;color:var(--muted);flex:1 1 180px;min-width:0}
+#trace{display:block;margin:0 12px 8px;width:calc(100% - 24px);height:auto}
+.bench-note{font-size:12.5px;color:var(--muted);margin:0}
+.hole{fill:#39403f}.hit{fill:transparent;cursor:crosshair}
+.hit:hover{fill:rgba(243,167,34,.55)}
+.pinhit{fill:transparent;cursor:crosshair}.pinhit:hover{fill:rgba(243,167,34,.7)}
+.wirehalo{fill:none;stroke:rgba(0,0,0,.28);stroke-width:5.5;stroke-linecap:round}
+.wire{fill:none;stroke-width:3.6;stroke-linecap:round}
+.flow{fill:none;stroke:#fff;stroke-width:1.5;stroke-dasharray:3 9;stroke-linecap:round;opacity:0;pointer-events:none}
+.flow.f{opacity:.95;animation:df .55s linear infinite}.flow.r{opacity:.95;animation:dr .55s linear infinite}
+@keyframes df{to{stroke-dashoffset:-12}}@keyframes dr{to{stroke-dashoffset:12}}
+.hlbar{fill:rgba(243,167,34,.42);stroke:#b86f00;stroke-width:1.2;pointer-events:none}
+.pulse{animation:pl 1.1s ease-in-out infinite}
+@keyframes pl{50%{opacity:.35}}
+.stripbar{fill:rgba(190,120,30,.22);pointer-events:none}
+.clickable{cursor:pointer}
+@media (prefers-reduced-motion:reduce){.flow.f,.flow.r,.pulse{animation:none}}
+@media (max-width:1040px){.main{grid-template-columns:minmax(0,1fr)}.left{display:contents}.sheet{order:2}.lower{order:3}}
+@media (max-width:720px){.lower{grid-template-columns:minmax(0,1fr)}h1{width:100%}header label.f{flex:1 1 42%}}
+</style>
+<div class="wrap">
+<header>
+  <h1>Breadboard Bench</h1>
+  <label class="f" for="sBoard">Controller board<select id="sBoard"></select></label>
+  <label class="f" for="sBB">Breadboard<select id="sBB"><option value="half">Half size, 400 points</option><option value="full">Full size, 830 points</option><option value="split">Full size, rails split at column 30</option></select></label>
+  <label class="f" for="sLesson">Circuit<select id="sLesson"></select></label>
+  <div class="seg" role="group" aria-label="How you want to work" id="modes">
+    <button data-m="watch">Watch steps</button><button data-m="do">Wire it yourself</button><button data-m="free">Free build</button>
+  </div>
+</header>
+<div class="timeline" id="timeline" aria-label="Steps"></div>
+<div class="main">
+  <div class="left">
+    <div>
+      <div class="stage"><div class="scroll"><svg id="svg" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Controller board and breadboard with the current wiring"></svg></div></div>
+      <div class="probe" id="probe"></div>
+    </div>
+    <div class="tools">
+      <label><input type="checkbox" id="cStrips"> Show the metal strips inside the board</label>
+      <label><input type="checkbox" id="cPower" checked> USB power on</label>
+    </div>
+    <div class="viewbar" id="viewbar">
+      <strong>Rotate board</strong>
+      <button class="btn sm" data-v="left">Turn left 90°</button><button class="btn sm" data-v="right">Turn right 90°</button><button class="btn sm" data-v="flip">Flip to underside</button><button class="btn sm" data-v="reset">Reset view</button>
+      <label><input type="checkbox" id="cDrag"> Drag board to rotate</label>
+      <label for="vx">Tilt <input id="vx" type="range" min="-180" max="180" value="0"></label>
+      <label for="vy">Swivel <input id="vy" type="range" min="-180" max="180" value="0"></label>
+      <label for="vz">Turn <input id="vz" type="range" min="-180" max="180" value="0"></label>
+      <small id="viewnote" hidden>Underside view, mirror image. The copper bars show which holes are joined.</small>
+    </div>
+    <div class="meter" id="meter"></div>
+    <div class="lower">
+      <div class="term"><div class="bar"><span id="codeTitle">Code</span><button id="copy">Copy</button></div><pre id="code"></pre></div>
+      <div class="term"><div class="bar"><span>Serial monitor</span></div><svg id="trace" viewBox="0 0 300 84" hidden aria-label="Live ADS1015 counts"></svg><pre id="serial" aria-live="polite"></pre></div>
+    </div>
+  </div>
+  <aside class="sheet" id="sheet"></aside>
+</div>
+</div>
+<script>
+"use strict";
+/* ---------- Boards ---------- */
+const P=(id,label,type,v)=>({id,label:label||id,type:type||'io',v});
+const BOARDS={
+ uno:{name:'Arduino Uno',vcc:5,lang:'cpp',mcu:true,color:'#0f7f8c',
+  top:[P('AREF','AREF','nc'),P('GND2','GND','gnd'),...[13,12,11,10,9,8,7,6,5,4,3,2].map(n=>P('D'+n))],
+  bottom:[P('IOREF','IOREF','nc'),P('RESET','RST','nc'),P('3V3','3V3','pwr',3.3),P('5V','5V','pwr'),P('GND','GND','gnd'),P('GND1','GND','gnd'),P('VIN','VIN','nc'),...[0,1,2,3,4,5].map(n=>P('A'+n))],
+  roles:{POWER:'5V',GND:'GND',OUT:'D9',OUT2:'D10',OUT3:'D11',IN:'D2',ADC:'A0'},num:{OUT:9,OUT2:10,OUT3:11,IN:2,ADC:'A0'},adc:1023},
+ esp32:{name:'ESP32 DevKit V1',vcc:3.3,lang:'cpp',mcu:true,color:'#20252b',
+  left:['VIN','GND','D13','D12','D14','D27','D26','D25','D33','D32','D35','D34','VN','VP','EN'].map(l=>l==='GND'?P('GND','GND','gnd'):P(l,l,['VIN','VN','VP','EN'].includes(l)?'nc':'io')),
+  right:['3V3','GND2','D15','D2','D4','RX2','TX2','D5','D18','D19','D21','RX0','TX0','D22','D23'].map(l=>l==='3V3'?P('3V3','3V3','pwr'):l==='GND2'?P('GND2','GND','gnd'):P(l,l,['RX0','TX0'].includes(l)?'nc':'io')),
+  roles:{POWER:'3V3',GND:'GND2',OUT:'D18',OUT2:'D19',OUT3:'D21',IN:'D4',ADC:'D34'},num:{OUT:18,OUT2:19,OUT3:21,IN:4,ADC:34},adc:4095},
+ pico:{name:'Raspberry Pi Pico',vcc:3.3,lang:'py',mcu:true,color:'#1d6b43',
+  left:['GP0','GP1','GND','GP2','GP3','GP4','GP5','GND3','GP6','GP7','GP8','GP9','GND4','GP10','GP11','GP12','GP13','GND5','GP14','GP15'].map(l=>/^GND/.test(l)?P(l,'GND','gnd'):P(l)),
+  right:['VBUS','VSYS','GND6','3V3_EN','3V3','ADC_VREF','GP28','AGND','GP27','GP26','RUN','GP22','GND7','GP21','GP20','GP19','GP18','GND8','GP17','GP16'].map(l=>/^(GND|AGND)/.test(l)?P(l,l==='AGND'?'AGND':'GND','gnd'):l==='3V3'?P('3V3','3V3 OUT','pwr'):['VBUS','VSYS','3V3_EN','ADC_VREF','RUN'].includes(l)?P(l,l,'nc'):P(l)),
+  roles:{POWER:'3V3',GND:'GND6',OUT:'GP15',OUT2:'GP14',OUT3:'GP13',IN:'GP16',ADC:'GP26'},num:{OUT:15,OUT2:14,OUT3:13,IN:16,ADC:26},adc:65535},
+ esp38:{name:'ESP32 DevKit 38-pin',vcc:3.29,lang:'cpp',mcu:true,color:'#20252b',
+  left:['3V3','EN','VP','VN','IO34','IO35','IO32','IO33','IO25','IO26','IO27','IO14','IO12','GND','IO13','SD2','SD3','CMD','5V'].map(l=>l==='3V3'?P(l,l,'pwr'):l==='GND'?P(l,l,'gnd'):l==='5V'?P(l,l,'pwr',5):['EN','VP','VN','SD2','SD3','CMD'].includes(l)?P(l,l,'nc'):P(l)),
+  right:['GND2','IO23','IO22','TX','RX','IO21','GND3','IO19','IO18','IO5','IO17','IO16','IO4','IO0','IO2','IO15','SD1','SD0','CLK'].map(l=>/^GND/.test(l)?P(l,'GND','gnd'):['TX','RX','SD1','SD0','CLK'].includes(l)?P(l,l,'nc'):P(l)),
+  roles:{POWER:'3V3',GND:'GND',OUT:'IO18',OUT2:'IO19',OUT3:'IO23',IN:'IO4',ADC:'IO34'},num:{OUT:18,OUT2:19,OUT3:23,IN:4,ADC:34},adc:4095},
+ supply:{name:'5 V power module (no code)',vcc:5,lang:null,mcu:false,color:'#7b2332',
+  right:[P('5V','+5V','pwr'),P('GND','GND','gnd')],roles:{POWER:'5V',GND:'GND'},num:{}}
+};
+/* ---------- Lessons ---------- */
+const wire=(a,b,color,o)=>({t:'wire',a,b,color,...o});
+const part=(p,o)=>({t:'part',part:p,...o});
+const R=(id,a,b,value)=>({kind:'r',id,a,b,value});
+const LED=(id,a,b,color)=>({kind:'led',id,a,b,color});
+const railP=()=>wire('pin:POWER','t+:2','#d3322a',{title:'Power to the + rail',do:'Connect {POWER} to the top + rail, hole 2.',why:'The whole red + line is one long conductor, so this one wire makes {VCC} available along the entire rail.',expect:'The far end of the + rail now reads {VCC}. Nothing lights up, because nothing is connected to the rail yet.',checks:[{at:'t+:28',v:'VCC',label:'+ rail, far end'}],mistake:'Plugging into the blue − rail by accident. Check the colour line beside the holes.'});
+const railG=(noPlus)=>wire('pin:GND','t-:2','#23262a',{title:'Ground to the − rail',do:'Connect {GND} to the top − rail, hole 2.',why:'Ground is the return path. Current has to get back to the board or nothing flows.',expect:noPlus?'The whole − rail reads 0 V. This circuit takes its power from a code-controlled pin, so the + rail stays unused.':'The − rail reads 0 V. The + rail stays at {VCC}.',checks:noPlus?[{at:'t-:28',v:0,label:'− rail, far end'}]:[{at:'t-:28',v:0,label:'− rail, far end'},{at:'t+:28',v:'VCC',label:'+ rail, far end'}],mistake:'Leaving ground out. Rail voltages look fine on the power side but no circuit will ever work.'});
+const LEDFAULTS=[
+ {label:'Flip the LED',f:{swap:'D1'},say:'The LED blocks current when reversed, so it stays dark and nothing is damaged. Turn it around so the long leg faces the positive side.'},
+ {label:'Leave out the resistor',f:{short:'R1'},say:'Without a resistor only the LED and the supply limit the current. It rises far past the 20 to 30 mA an LED tolerates, and a real LED can fail in moments.'}];
+const LESSONS=[
+{id:'tour',name:'Breadboard tour: how the holes connect',mcu:false,steps:[
+ {t:'look',hl:['t+','t-'],title:'The power rails',do:'Find the red and blue lines along the top edge.',why:'Each line marks one long metal strip. Every hole along the red line is connected, and every hole along the blue line is connected. Red and blue are not connected to each other.',expect:'There are 4 rails in total: + and − at the top, + and − at the bottom. Top and bottom rails are separate until you join them.',mistake:'Some full-size boards split the rails halfway. If the far end reads 0 V, add a short jumper across the break.'},
+ {t:'look',hl:['u10'],title:'A row group: a to e',do:'Look at column 10. Holes a, b, c, d and e are highlighted.',why:'These five holes sit on one metal clip. Anything plugged in here is connected. That is how parts join without solder.',expect:'Two legs in holes 10a and 10c are connected. Two legs in 10a and 11a are not.',mistake:'Putting both legs of a part in the same group. The part gets bypassed and does nothing.'},
+ {t:'look',hl:['u10','l10'],title:'The centre gap',do:'See the two highlighted groups, one above the gap and one below.',why:'The gap breaks each column into two groups: a to e and f to j. Chips straddle this gap so each of their pins gets its own group.',expect:'10e and 10f look close but they are not connected.',mistake:'Assuming a column runs top to bottom across the gap. It does not.'},
+ railP(),railG(),
+ wire('t+:10','10a','#d3322a',{title:'Bring power to a row',do:'Connect the + rail at hole 10 to hole 10a.',why:'Now the a to e group of column 10 is part of the {VCC} net.',expect:'All of 10a to 10e read {VCC}. Hole 10f has no connection, because the gap stops it.',checks:[{at:'10e',v:'VCC',label:'Hole 10e'},{at:'10f',v:'float',label:'Hole 10f, across the gap'}],mistake:'Not pushing the wire fully in. A loose wire reads like an open circuit.'}),
+ wire('10e','10f','#e7a117',{title:'Jump across the gap',do:'Connect hole 10e to hole 10f.',why:'A jumper is the only way to join the two halves of a column.',expect:'Now 10f to 10j also read {VCC}. Try tapping other holes to see which ones changed.',checks:[{at:'10j',v:'VCC',label:'Hole 10j'},{at:'11a',v:'float',label:'Hole 11a, next column'}],mistake:'Expecting column 11 to change too. Neighbouring columns stay separate.'})
+]},
+{id:'led',name:'Light an LED',mcu:false,faults:LEDFAULTS,steps:[
+ railP(),railG(),
+ wire('t+:10','10a','#d3322a',{title:'Power to row 10',do:'Connect the + rail at hole 10 to hole 10a.',why:'This brings {VCC} off the rail and into a working row.',expect:'Holes 10a to 10e read {VCC}.',checks:[{at:'10c',v:'VCC',label:'Hole 10c'}],mistake:'Using a hole in column 11 for the next part. It would not touch this wire.'}),
+ part(R('R1','10c','15c',220),{title:'Add the 220 Ω resistor',do:'Place a 220 Ω resistor from hole 10c to hole 15c. Either direction works.',why:'The resistor limits the current so the LED survives. Its colour bands are red, red, brown.',expect:'Hole 15c reads {VCC}. With no current flowing there is no voltage drop across the resistor. The circuit is still open.',checks:[{at:'15c',v:'VCC',label:'Hole 15c'},{cur:'R1',v:0,label:'Resistor current'}],mistake:'Placing both legs in the same column group. The resistor would do nothing.'}),
+ part(LED('D1','15e','16e','red'),{title:'Add the LED',do:'Put the long leg (anode) in 15e and the short leg (cathode) in 16e.',why:'An LED only conducts one way: long leg toward positive.',expect:'The LED stays off. Its short leg has no path back to ground yet.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Reversing the LED. It stays dark even after the circuit is complete.'}),
+ wire('16a','t-:16','#23262a',{title:'Close the loop',do:'Connect hole 16a to the − rail at hole 16.',why:'Current now has a full path: + rail, resistor, LED, − rail.',expect:x=>`The LED lights. Expect about (${x.V} V − 2 V) ÷ 220 Ω = ${((x.V-2)/220*1000).toFixed(1)} mA, with about 2 V across the LED.`,checks:[{led:'D1',on:true,label:'LED'},{at:'15e',v:2,tol:.25,label:'LED long leg'},{at:'16a',v:0,tol:.15,label:'LED short leg'}],mistake:'Landing in hole 16f instead of 16a. It is the wrong side of the gap, so the LED stays off.'})
+]},
+{id:'blink',name:'Blink an LED from code',mcu:true,faults:LEDFAULTS,prog:(a,t)=>{const on=Math.floor(t/1000)%2===0;a.out('OUT',on?1:0);a.once('s',on?'LED on':'LED off')},
+ code:{cpp:n=>`const int LED_PIN = ${n.OUT};
+
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+  Serial.begin(115200);
+}
+
+void loop() {
+  digitalWrite(LED_PIN, HIGH);
+  Serial.println("LED on");
+  delay(1000);
+  digitalWrite(LED_PIN, LOW);
+  Serial.println("LED off");
+  delay(1000);
+}`,py:n=>`from machine import Pin
+import time
+
+led = Pin(${n.OUT}, Pin.OUT)
+
+while True:
+    led.value(1)
+    print("LED on")
+    time.sleep(1)
+    led.value(0)
+    print("LED off")
+    time.sleep(1)`},
+ steps:[
+ railG(true),
+ wire('pin:OUT','10a','#2b6fd6',{title:'Signal pin to row 10',do:'Connect {OUT} to hole 10a.',why:'A code-controlled pin replaces the fixed power rail as the LED supply.',expect:'Row 10 is floating. {OUT} is an input until your code runs, so it drives nothing.',checks:[{at:'10c',v:'float',label:'Hole 10c'}],mistake:'Using a pin different from the one in the code. Pin number and wire must match.'}),
+ part(R('R1','10c','15c',220),{title:'Add the 220 Ω resistor',do:'Place the resistor from hole 10c to hole 15c.',why:'It limits both the LED current and the load on the {OUT} pin.',expect:'Still no output. The pin is not driving yet.',checks:[{at:'15c',v:'float',label:'Hole 15c'}],mistake:'Skipping the resistor because the voltage seems low. Pins have strict current limits.'}),
+ part(LED('D1','15e','16e','red'),{title:'Add the LED',do:'Long leg in 15e, short leg in 16e.',why:'The long leg faces the signal pin, the short leg faces ground.',expect:'LED off.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Reversing the legs.'}),
+ wire('16a','t-:16','#23262a',{title:'Connect to ground',do:'Connect hole 16a to the − rail at hole 16.',why:'This completes the loop. Only the signal pin is missing now.',expect:'LED stays off until the code runs. Hardware is complete.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Testing the code before this wire is in, then blaming the code.'}),
+ {t:'code',title:'Upload the code',do:'Upload the code shown below the board.',why:'The code sets {OUT} to output and switches it high and low once per second.',expect:'The LED blinks: 1 second on, 1 second off. The serial monitor prints each change.',checks:[{led:'D1',on:'blink',label:'LED'},{serial:true,label:'Serial monitor'}],mistake:'Serial speed mismatch shows gibberish. Set the monitor to 115200 baud.'}
+ ]},
+{id:'button',name:'Button controls an LED',mcu:true,faults:[{label:'Remove the pull-down resistor',f:{remove:'R2'},say:'With the button up, the input pin connects to nothing and picks up electrical noise. The LED flickers on its own. This is called a floating input.'}],
+ prog:(a,t)=>{const v=a.dread('IN',t);a.out('OUT',v);a.once('s',v?'button = PRESSED':'button = released')},
+ code:{cpp:n=>`const int BUTTON_PIN = ${n.IN};
+const int LED_PIN = ${n.OUT};
+int last = -1;
+
+void setup() {
+  pinMode(BUTTON_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  Serial.begin(115200);
+}
+
+void loop() {
+  int pressed = digitalRead(BUTTON_PIN);
+  digitalWrite(LED_PIN, pressed);
+  if (pressed != last) {
+    Serial.println(pressed ? "button = PRESSED" : "button = released");
+    last = pressed;
+  }
+}`,py:n=>`from machine import Pin
+
+button = Pin(${n.IN}, Pin.IN)
+led = Pin(${n.OUT}, Pin.OUT)
+last = -1
+
+while True:
+    pressed = button.value()
+    led.value(pressed)
+    if pressed != last:
+        print("button = PRESSED" if pressed else "button = released")
+        last = pressed`},
+ steps:[railP(),railG(),
+ part({kind:'btn',id:'S1',col:10},{title:'Place the push button',do:'Press the button across the centre gap, legs in 10e, 10f, 12e and 12f.',why:'Straddling the gap keeps its two sides separate. Column 10 and column 12 join only while it is pressed.',expect:'Nothing changes yet. Column 12 is floating.',checks:[{at:'12a',v:'float',label:'Hole 12a'}],mistake:'Turning the button 90°. Its sides are then always connected and it looks permanently pressed.'}),
+ wire('t+:10','10a','#d3322a',{title:'Power one side',do:'Connect the + rail at hole 10 to hole 10a.',why:'One side of the button sits at {VCC}, ready to pass it across.',expect:'Column 10 reads {VCC}. Column 12 stays floating until pressed.',checks:[{at:'10a',v:'VCC',label:'Hole 10a'},{at:'12a',v:'float',label:'Hole 12a'}],mistake:'Wiring both sides to power. The input would always read high.'}),
+ wire('12a','pin:IN','#2b6fd6',{title:'Button to the input pin',do:'Connect hole 12a to {IN}.',why:'The board reads this pin to learn the button state.',expect:'Still floating while the button is up.',checks:[{at:'12a',v:'float',label:'Hole 12a'}],mistake:'Wiring to column 11, which the button legs do not touch.'}),
+ wire('pin:OUT','20a','#2b6fd6',{title:'LED signal wire',do:'Connect {OUT} to hole 20a.',why:'This pin will drive the LED.',expect:'Row 20 floats until the code runs.',checks:[{at:'20a',v:'float',label:'Hole 20a'}],mistake:'Mixing up {IN} and {OUT}.'}),
+ part(R('R1','20c','24c',220),{title:'LED resistor',do:'Place 220 Ω from 20c to 24c.',why:'Limits LED current.',expect:'No visible change.',checks:[{at:'24c',v:'float',label:'Hole 24c'}],mistake:'Using the 10 kΩ here. The LED would be almost invisible.'}),
+ part(LED('D1','24e','25e','green'),{title:'Add the LED',do:'Long leg in 24e, short leg in 25e.',why:'Long leg toward the resistor and pin.',expect:'LED off.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Reversing the legs.'}),
+ wire('25a','t-:25','#23262a',{title:'LED to ground',do:'Connect hole 25a to the − rail at hole 25.',why:'Completes the LED loop.',expect:'LED still off. The code is not running.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Choosing a hole in the − rail that does not exist. Rails skip a position every 5 holes.'}),
+ {t:'code',title:'Upload, and see the bug',do:'Upload the code. The input has no pull-down yet.',why:'With the button up, the input pin connects to nothing. It picks up noise and reads random values.',expect:'The LED flickers on its own and the serial monitor jumps between pressed and released. This fault is deliberate, and the next step fixes it.',checks:[{at:'12a',v:'float',label:'Hole 12a'},{serial:true,label:'Serial monitor'}],mistake:'Debugging the code here. The bug is in the wiring.'},
+ part(R('R2','12c','17c',10000),{title:'Add the 10 kΩ pull-down',do:'Place 10 kΩ from 12c to 17c.',why:'One end joins the input. The other goes to ground in the next step.',expect:'Still floating. The resistor is not grounded yet.',checks:[{at:'12a',v:'float',label:'Hole 12a'}],mistake:'Using 220 Ω. It works but wastes current whenever the button is held.'}),
+ wire('17a','t-:17','#23262a',{title:'Ground the pull-down',do:'Connect hole 17a to the − rail at hole 17.',why:'The input now rests firmly at 0 V when the button is up.',expect:'Flicker stops. The input reads 0 V and the LED stays off.',checks:[{at:'12a',v:0,tol:.1,label:'Input pin net'},{led:'D1',on:false,label:'LED'}],mistake:'Grounding the wrong column, leaving the input floating.'}),
+ {t:'look',hold:'S1',title:'Press the button',do:'Hold the button down. It is held for you on this step.',why:'{VCC} now reaches the input, overpowering the weak 10 kΩ pull-down.',expect:'The input reads {VCC}, the LED lights and serial prints PRESSED. Release it and everything returns to off.',checks:[{at:'12a',v:'VCC',label:'Input pin net'},{led:'D1',on:true,label:'LED'}],mistake:'No change on press usually means the button is rotated 90°.'}
+ ]},
+{id:'pot',name:'Dim an LED with a potentiometer',mcu:false,faults:[{label:'Flip the LED',f:{swap:'D1'},say:'The reversed LED blocks current at every knob position. The wiper voltage returns to its unloaded value.'}],steps:[railP(),railG(),
+ part({kind:'pot',id:'RV1',col:10,row:'d'},{title:'Place the potentiometer',do:'Put the three legs in 10d, 11d and 12d.',why:'The outer legs are the ends of a 10 kΩ track. The middle leg is the wiper, which slides along it.',expect:'All three columns float. The track has no connections yet.',checks:[{at:'11a',v:'float',label:'Wiper'}],mistake:'Using the middle leg as an end. The knob would then behave strangely.'}),
+ wire('t+:10','10a','#d3322a',{title:'Top of the track to +',do:'Connect the + rail at hole 10 to hole 10a.',why:'One end of the track goes to {VCC}.',expect:'The wiper reads {VCC}: no current flows, so there is no drop along the track.',checks:[{at:'11a',v:'VCC',label:'Wiper'}],mistake:'Connecting both outer legs to +.'}),
+ wire('12a','t-:11','#23262a',{title:'Bottom of the track to −',do:'Connect hole 12a to the − rail at hole 11.',why:'The track is now a voltage divider. Current flows through it all the time.',expect:x=>`At 80% knob position the wiper reads ${(x.V*.8).toFixed(2)} V. Move the knob slider and watch it sweep from 0 to ${x.V} V.`,checks:[{at:'11a',v:x=>x*.8,label:'Wiper'}],mistake:'Connecting the wiper to ground instead. Turning the knob fully could then short the supply through the track.'}),
+ part(R('R1','11e','16e',220),{title:'Resistor from the wiper',do:'Place 220 Ω from 11e to 16e.',why:'It protects the LED at the top of the knob range.',expect:'The wiper voltage does not change, because the resistor end is still open.',checks:[{at:'16e',v:x=>x*.8,label:'Hole 16e'}],mistake:'Placing it on the outer leg, column 10. The knob would not control the LED.'}),
+ part(LED('D1','16c','17c','yellow'),{title:'Add the LED',do:'Long leg in 16c, short leg in 17c.',why:'Long leg toward the wiper.',expect:'LED off. It still needs ground.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Reversing the legs.'}),
+ wire('17a','t-:17','#23262a',{title:'LED to ground',do:'Connect hole 17a to the − rail at hole 17.',why:'The wiper now feeds the LED, so knob position sets its current.',expect:'The LED glows, and the wiper reads a little lower than before because the LED is loading it. Move the knob: brightness changes and the LED turns off when the wiper falls below about 2 V.',checks:[{led:'D1',on:true,label:'LED at 80%'}],mistake:'Expecting a smooth fade down to 0 V. An LED cuts out below its forward voltage.'})
+]},
+{id:'night',name:'Night light with a light sensor',mcu:true,faults:[{label:'Remove the 10 kΩ resistor',f:{remove:'R2'},say:'Without the 10 kΩ, no current flows through the sensor, so the ADC pin sits near full scale whatever the light level. The reading stops responding.'}],
+ prog:(a,t)=>{const f=a.aread('ADC');const dark=f<.3;a.out('OUT',dark?1:0);if(a.every(1000,t))a.print('light = '+Math.round(f*a.adcMax)+(dark?'  dark, LED on':'  bright, LED off'))},
+ code:{cpp:(n,m)=>`const int SENSOR_PIN = ${n.ADC};
+const int LED_PIN = ${n.OUT};
+const int DARK_BELOW = ${Math.round(m*.3)};  // 30% of full scale
+
+void setup() {
+  pinMode(LED_PIN, OUTPUT);
+  Serial.begin(115200);
+}
+
+void loop() {
+  int light = analogRead(SENSOR_PIN);
+  bool dark = light < DARK_BELOW;
+  digitalWrite(LED_PIN, dark);
+  Serial.print("light = ");
+  Serial.println(light);
+  delay(1000);
+}`,py:(n,m)=>`from machine import Pin, ADC
+import time
+
+sensor = ADC(Pin(${n.ADC}))
+led = Pin(${n.OUT}, Pin.OUT)
+DARK_BELOW = ${Math.round(m*.3)}  # 30% of full scale
+
+while True:
+    light = sensor.read_u16()
+    led.value(light < DARK_BELOW)
+    print("light =", light)
+    time.sleep(1)`},
+ steps:[railP(),railG(),
+ wire('t+:10','10a','#d3322a',{title:'Power to row 10',do:'Connect the + rail at hole 10 to hole 10a.',why:'The sensor will hang from this row.',expect:'Row 10 reads {VCC}.',checks:[{at:'10c',v:'VCC',label:'Hole 10c'}],mistake:'Starting the part in a different column from this wire.'}),
+ part({kind:'ldr',id:'LDR1',a:'10c',b:'14c'},{title:'Add the light sensor',do:'Place the LDR from 10c to 14c. Direction does not matter.',why:'An LDR changes resistance with light: about 1 kΩ in bright light, about 1 MΩ in the dark.',expect:'Hole 14c reads {VCC}, as no current flows yet.',checks:[{at:'14c',v:'VCC',label:'Hole 14c'}],mistake:'Reading a voltage from a lone sensor. It needs a partner resistor to make a usable signal.'}),
+ part(R('R2','14d','19d',10000),{title:'Add the 10 kΩ partner',do:'Place 10 kΩ from 14d to 19d.',why:'The sensor and this resistor will form a voltage divider. Their midpoint is at column 14.',expect:'No change. The bottom end is not grounded yet.',checks:[{at:'14c',v:'VCC',label:'Hole 14c'}],mistake:'Using 220 Ω. The signal would barely move.'}),
+ wire('19a','t-:19','#23262a',{title:'Ground the divider',do:'Connect hole 19a to the − rail at hole 19.',why:'Now current flows and column 14 reports the light level as a voltage.',expect:x=>`At 70% light the sensor is about 7.9 kΩ, so the midpoint reads about ${(x.V*.558).toFixed(2)} V. Move the light slider to see it change.`,checks:[{at:'14a',v:x=>x*.558,label:'Divider midpoint'}],mistake:'Swapping sensor and resistor. That inverts the reading, so bright reads low.'}),
+ wire('14a','pin:ADC','#2b6fd6',{title:'Midpoint to the analog input',do:'Connect hole 14a to {ADC}.',why:'This pin converts voltage to a number.',expect:'Voltage is unchanged. Analog inputs draw almost no current.',checks:[{at:'14a',v:x=>x*.558,label:'Divider midpoint'}],mistake:'Using a digital-only pin. It would read only high or low.'}),
+ wire('pin:OUT','22a','#2b6fd6',{title:'LED signal wire',do:'Connect {OUT} to hole 22a.',why:'The code will switch the LED from this pin.',expect:'Row 22 floats until the code runs.',checks:[{at:'22a',v:'float',label:'Hole 22a'}],mistake:'Mixing up the sensor and LED pins.'}),
+ part(R('R1','22c','26c',220),{title:'LED resistor',do:'Place 220 Ω from 22c to 26c.',why:'Limits the LED current.',expect:'No visible change.',checks:[{at:'26c',v:'float',label:'Hole 26c'}],mistake:'Grabbing the 10 kΩ by mistake. Check the colour bands.'}),
+ part(LED('D1','26e','27e','yellow'),{title:'Add the LED',do:'Long leg in 26e, short leg in 27e.',why:'Long leg toward the resistor.',expect:'LED off.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Reversing the legs.'}),
+ wire('27a','t-:27','#23262a',{title:'LED to ground',do:'Connect hole 27a to the − rail at hole 27.',why:'Completes the LED loop.',expect:'LED off. Code not running.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Leaving this out, then suspecting the threshold in the code.'}),
+ {t:'code',title:'Upload the code',do:'Upload the code and move the light slider.',why:'The code reads the sensor each second and turns on the LED below 30% of full scale.',expect:x=>`Serial prints about ${Math.round(.558*x.adc)} at 70% light and the LED stays off. Below roughly 30% light the reading drops under ${Math.round(.3*x.adc)} and the LED turns on.`,checks:[{led:'D1',on:false,label:'LED at 70% light'},{serial:true,label:'Serial monitor'}],mistake:'Real rooms differ. Read your own values in the serial monitor, then set the threshold.'}
+ ]},
+{id:'npn',name:'Switch a load with a transistor',mcu:true,faults:[{label:'Remove the base resistor',f:{short:'R2'},say:'The base draws far more current than the pin can safely supply. Always keep a resistor between a GPIO pin and a transistor base.'}],
+ prog:(a,t)=>{const on=Math.floor(t/1000)%2===0;a.out('OUT',on?1:0);a.once('s',on?'base HIGH, load on':'base LOW, load off')},
+ code:{cpp:n=>`const int BASE_PIN = ${n.OUT};
+
+void setup() {
+  pinMode(BASE_PIN, OUTPUT);
+  Serial.begin(115200);
+}
+
+void loop() {
+  digitalWrite(BASE_PIN, HIGH);
+  Serial.println("base HIGH, load on");
+  delay(1000);
+  digitalWrite(BASE_PIN, LOW);
+  Serial.println("base LOW, load off");
+  delay(1000);
+}`,py:n=>`from machine import Pin
+import time
+
+base = Pin(${n.OUT}, Pin.OUT)
+
+while True:
+    base.value(1)
+    print("base HIGH, load on")
+    time.sleep(1)
+    base.value(0)
+    print("base LOW, load off")
+    time.sleep(1)`},
+ steps:[railP(),railG(),
+ part({kind:'npn',id:'Q1',col:10,row:'d'},{title:'Place the NPN transistor',do:'Put collector in 10d, base in 11d and emitter in 12d, flat face toward you.',why:'A small base current lets a much larger current flow from collector to emitter. Example part: 2N2222 or BC547.',expect:'Nothing changes. All three columns float.',checks:[{at:'10a',v:'float',label:'Collector'}],mistake:'Pinouts vary. Check the datasheet for your exact part, because C, B and E are not in the same order on all transistors.'}),
+ wire('12a','t-:11','#23262a',{title:'Emitter to ground',do:'Connect hole 12a to the − rail at hole 11.',why:'An NPN switch sits on the ground side of the load.',expect:'Emitter reads 0 V.',checks:[{at:'12a',v:0,label:'Emitter'}],mistake:'Putting the load between emitter and ground. The switch would not fully turn on.'}),
+ part(R('R2','11e','16e',1000),{title:'Base resistor',do:'Place 1 kΩ from 11e to 16e.',why:'It limits base current so the pin and transistor stay safe.',expect:'Base stays low. Nothing is driving it yet.',checks:[{led:null,label:'',skip:true}],mistake:'Connecting the pin to the base directly.'}),
+ wire('16a','pin:OUT','#2b6fd6',{title:'Pin to the base resistor',do:'Connect hole 16a to {OUT}.',why:'The code will control the transistor from this pin.',expect:'No output until the code runs.',checks:[{at:'16a',v:'float',tolOk:true,label:'Hole 16a'}],mistake:'Choosing a pin different from the code.'}),
+ wire('t+:4','4a','#d3322a',{title:'Power to the load',do:'Connect the + rail at hole 4 to hole 4a.',why:'The load takes its power from the rail, not from the GPIO pin. That is why this works for loads the pin could not drive.',expect:'Row 4 reads {VCC}.',checks:[{at:'4c',v:'VCC',label:'Hole 4c'}],mistake:'Powering the load from the signal pin.'}),
+ part(R('R1','4c','8c',220),{title:'Load resistor',do:'Place 220 Ω from 4c to 8c.',why:'Limits LED current.',expect:'Hole 8c reads {VCC}.',checks:[{at:'8c',v:'VCC',label:'Hole 8c'}],mistake:'Leaving it out, which overloads the LED once the transistor turns on.'}),
+ part(LED('D1','8e','10e','red'),{title:'Add the load LED',do:'Long leg in 8e, short leg in 10e, which joins the collector.',why:'The LED sits between power and collector. The transistor will complete its path to ground.',expect:'LED off. The transistor is off, so current has no path.',checks:[{led:'D1',on:false,label:'LED'}],mistake:'Reversing the legs. Also check the short leg is in the collector column.'}),
+ {t:'code',title:'Upload the code',do:'Upload the code shown below the board.',why:'The pin switches the base. Base current turns on collector current.',expect:x=>`The LED blinks once per second. When on, it draws about ${((x.V-2)/225*1000).toFixed(0)} mA from the rail, while the pin supplies only about ${((x.V-.7)/1025*1000).toFixed(1)} mA.`,checks:[{led:'D1',on:'blink',label:'LED'},{serial:true,label:'Serial monitor'}],mistake:'For motors or relays add a flyback diode across the load. This simulator does not model inductive kickback.'}
+ ]},
+{id:'traffic',name:'Traffic light with three LEDs',mcu:true,faults:[{label:'Flip the red LED',f:{swap:'D1'},say:'Only the flipped LED stays dark. Each LED has its own branch, so the others keep working. That helps you isolate a fault.'}],
+ prog:(a,t)=>{const p=t%5000,s=p<2000?0:p<4000?1:2;a.out('OUT',s===0?1:0);a.out('OUT2',s===2?1:0);a.out('OUT3',s===1?1:0);a.once('s',['RED','GREEN','YELLOW'][s])},
+ code:{cpp:n=>`const int RED = ${n.OUT}, YELLOW = ${n.OUT2}, GREEN = ${n.OUT3};
+
+void show(int r, int y, int g, const char* name, int ms) {
+  digitalWrite(RED, r);
+  digitalWrite(YELLOW, y);
+  digitalWrite(GREEN, g);
+  Serial.println(name);
+  delay(ms);
+}
+
+void setup() {
+  pinMode(RED, OUTPUT);
+  pinMode(YELLOW, OUTPUT);
+  pinMode(GREEN, OUTPUT);
+  Serial.begin(115200);
+}
+
+void loop() {
+  show(1, 0, 0, "RED", 2000);
+  show(0, 0, 1, "GREEN", 2000);
+  show(0, 1, 0, "YELLOW", 1000);
+}`,py:n=>`from machine import Pin
+import time
+
+red = Pin(${n.OUT}, Pin.OUT)
+yellow = Pin(${n.OUT2}, Pin.OUT)
+green = Pin(${n.OUT3}, Pin.OUT)
+
+def show(r, y, g, name, secs):
+    red.value(r); yellow.value(y); green.value(g)
+    print(name)
+    time.sleep(secs)
+
+while True:
+    show(1, 0, 0, "RED", 2)
+    show(0, 0, 1, "GREEN", 2)
+    show(0, 1, 0, "YELLOW", 1)`},
+ steps:[railG(true),
+ wire('pin:OUT','8a','#d3322a',{title:'Red signal wire',do:'Connect {OUT} to hole 8a.',why:'Each LED gets its own pin, so the code can control it alone.',expect:'Row 8 floats until the code runs.',checks:[{at:'8a',v:'float',label:'Hole 8a'}],mistake:'Sharing a pin between LEDs.'}),
+ part(R('R1','8c','11c',220),{title:'Red resistor',do:'Place 220 Ω from 8c to 11c.',why:'Each LED needs its own resistor.',expect:'No visible change.',checks:[{at:'11c',v:'float',label:'Hole 11c'}],mistake:'Sharing one resistor between LEDs. Brightness then depends on which LEDs are on.'}),
+ part(LED('D1','11e','12e','red'),{title:'Red LED',do:'Long leg in 11e, short leg in 12e.',why:'Long leg toward the resistor.',expect:'LED off.',checks:[{led:'D1',on:false,label:'Red LED'}],mistake:'Reversing the legs.'}),
+ wire('12a','t-:11','#23262a',{title:'Red to ground',do:'Connect hole 12a to the − rail at hole 11.',why:'All three LEDs will share the − rail for their return path.',expect:'The red branch is complete. Still off.',checks:[{led:'D1',on:false,label:'Red LED'}],mistake:'Using the + rail by mistake.'}),
+ wire('pin:OUT2','14a','#e7a117',{title:'Yellow signal wire',do:'Connect {OUT2} to hole 14a.',why:'Second branch, same pattern.',expect:'Row 14 floats.',checks:[{at:'14a',v:'float',label:'Hole 14a'}],mistake:'Reusing column 12 or 13. Keep at least one free column between branches.'}),
+ part(R('R3','14c','17c',220),{title:'Yellow resistor',do:'Place 220 Ω from 14c to 17c.',why:'Own resistor for this branch.',expect:'No visible change.',checks:[{at:'17c',v:'float',label:'Hole 17c'}],mistake:'Skipping it because red looked fine.'}),
+ part(LED('D2','17e','18e','yellow'),{title:'Yellow LED',do:'Long leg in 17e, short leg in 18e.',why:'Long leg toward the resistor.',expect:'LED off.',checks:[{led:'D2',on:false,label:'Yellow LED'}],mistake:'Reversing the legs.'}),
+ wire('18a','t-:17','#23262a',{title:'Yellow to ground',do:'Connect hole 18a to the − rail at hole 17.',why:'Column 18 has no rail hole straight above it, so reach across to 17.',expect:'Yellow branch complete.',checks:[{led:'D2',on:false,label:'Yellow LED'}],mistake:'Forgetting that any rail hole works. The rail is one conductor.'}),
+ wire('pin:OUT3','20a','#23a455',{title:'Green signal wire',do:'Connect {OUT3} to hole 20a.',why:'Third branch.',expect:'Row 20 floats.',checks:[{at:'20a',v:'float',label:'Hole 20a'}],mistake:'Swapping pins. The sequence then runs in the wrong colours.'}),
+ part(R('R4','20c','23c',220),{title:'Green resistor',do:'Place 220 Ω from 20c to 23c.',why:'Own resistor for this branch.',expect:'No visible change.',checks:[{at:'23c',v:'float',label:'Hole 23c'}],mistake:'Crossing into the previous branch column.'}),
+ part(LED('D3','23e','24e','green'),{title:'Green LED',do:'Long leg in 23e, short leg in 24e.',why:'Long leg toward the resistor.',expect:'LED off.',checks:[{led:'D3',on:false,label:'Green LED'}],mistake:'Reversing the legs.'}),
+ wire('24a','t-:25','#23262a',{title:'Green to ground',do:'Connect hole 24a to the − rail at hole 25.',why:'All three branches now share ground.',expect:'Hardware complete. All LEDs off.',checks:[{led:'D3',on:false,label:'Green LED'}],mistake:'A shared ground that falls loose makes all LEDs fail together. Check this first.'}),
+ {t:'code',title:'Upload the code',do:'Upload the code shown below the board.',why:'The code cycles the three pins: red 2 s, green 2 s, yellow 1 s.',expect:'Only one LED is on at a time. The serial monitor prints each colour.',checks:[{led:'D1',on:'blink',label:'Red LED'},{led:'D2',on:'blink',label:'Yellow LED'},{led:'D3',on:'blink',label:'Green LED'}],mistake:'Two LEDs on together usually means a wire crossed between branches.'}
+ ]}
+];
+
+/* ---------- Day 1 test circuits from TEST_CIRCUITS.pdf ---------- */
+const F38={board:'esp38',bb:'split'};
+const TXT={scan:'// Your file: tests/i2c_scanner/i2c_scanner.ino\n// Serial Monitor: 115200 baud\n//\n// This simulator models the expected result.\n// It does not run your sketch.',
+ fw:'// Your file: firmware/emg_firmware.ino\n#define USE_BT 0\n// Serial Monitor: 921600 baud\n// Output lines: microseconds,counts\n//\n// This simulator models the expected result.\n// It does not run your firmware.',
+ rate:'# Close the Serial Monitor and dashboard first\npython tests/check_rate.py /dev/ttyUSB0',
+ bt:'// firmware/emg_firmware.ino\n#define USE_BT 1\n\n# Pair "EMG-Logger" in Ubuntu Bluetooth settings, then:\nsudo rfcomm bind 0 20:50:0D:4E:0A:3E\npython tests/check_rate.py /dev/rfcomm0\npython emg_server.py --port /dev/rfcomm0 --gain 1\n# Open http://localhost:8000',
+ dac:'// Your file: tests/dac_test/dac_test.ino\n\npython emg_server.py --port /dev/rfcomm0 --gain 1\n# Use the serial port your setup needs for --port'};
+TXT.fw="// Set USE_BT 0 for this test. Serial Monitor: 921600 baud.\n// DIY sEMG streamer: ESP32 + ADS1015 (differential AIN0-AIN1), 1 kHz, text lines \"micros,counts\"\n//\n// Sampling runs in loop() at exactly 1 kHz and puts samples in a ring buffer.\n// A separate task sends the buffer out in small batches, so a slow or stalled\n// Bluetooth link delays delivery but never stops the sampling.\n#include <Wire.h>\n\n#define USE_BT 0   // 1 = Bluetooth (use for body recordings). 0 = USB serial (bench tests ONLY, no electrodes on you)\n\n#if USE_BT\n#include \"BluetoothSerial.h\"\nBluetoothSerial bt;\n#endif\nStream* out;\n\nconst uint8_t ADS_ADDR = 0x48;\nconst uint32_t PERIOD_US = 1000;  // 1 kHz output\nuint32_t nextT;\n\n// ---- ring buffer: loop() writes, sendTask() reads ----\nconst uint16_t QN = 2048;          // about 2 s of samples\nstruct Sample { uint32_t t; int16_t v; };\nSample q[QN];\nvolatile uint16_t qHead = 0;       // next slot to write (sampler only)\nvolatile uint16_t qTail = 0;       // next slot to read (sender only)\nvolatile uint32_t dropped = 0;     // samples lost because the buffer was full\n\nvoid adsConfig() {\n  // 0x0483: continuous, AIN0-AIN1, +/-2.048 V, 1600 SPS, comparator off\n  Wire.beginTransmission(ADS_ADDR);\n  Wire.write(0x01); Wire.write(0x04); Wire.write(0x83);\n  Wire.endTransmission();\n  Wire.beginTransmission(ADS_ADDR);   // point to conversion register\n  Wire.write(0x00);\n  Wire.endTransmission();\n}\n\nint16_t adsRead() {\n  Wire.requestFrom(ADS_ADDR, (uint8_t)2);\n  int16_t v = (Wire.read() << 8) | Wire.read();\n  return v >> 4;  // 12-bit, 1 mV/count at +/-2.048 V\n}\n\nvoid sendTask(void*) {\n  static char buf[1600];\n  uint32_t lastDropped = 0;\n  for (;;) {\n#if USE_BT\n    if (!bt.hasClient()) {           // nobody connected: throw away stale samples\n      qTail = qHead;\n      dropped = 0;\n      lastDropped = 0;\n      vTaskDelay(pdMS_TO_TICKS(50));\n      continue;\n    }\n#endif\n    int n = 0;\n    uint16_t t = qTail;\n    while (t != qHead && n < (int)sizeof(buf) - 40) {\n      n += snprintf(buf + n, sizeof(buf) - n, \"%lu,%d\\n\",\n                    (unsigned long)q[t].t, (int)q[t].v);\n      t = (t + 1) % QN;\n    }\n    uint32_t d = dropped;\n    if (d != lastDropped && n < (int)sizeof(buf) - 40) {\n      n += snprintf(buf + n, sizeof(buf) - n, \"# dropped %lu\\n\", (unsigned long)d);\n      lastDropped = d;\n    }\n    if (n > 0) {\n      int off = 0;\n      while (off < n) {\n        size_t w = out->write((const uint8_t*)buf + off, n - off);\n        if (w == 0) vTaskDelay(1);\n        off += (int)w;\n      }\n      qTail = t;\n    }\n    vTaskDelay(pdMS_TO_TICKS(10));   // send roughly every 10 ms, about 10 samples per batch\n  }\n}\n\nvoid setup() {\n#if USE_BT\n  bt.begin(\"EMG-Logger\");\n  out = &bt;\n#else\n  Serial.begin(921600);\n  out = &Serial;\n#endif\n  Wire.begin(21, 22);\n  Wire.setClock(400000);\n  adsConfig();\n  xTaskCreatePinnedToCore(sendTask, \"send\", 4096, NULL, 1, NULL, 0);\n  nextT = micros() + PERIOD_US;\n}\n\nvoid loop() {\n  uint32_t now = micros();\n  if ((int32_t)(now - nextT) >= 0) {\n    nextT += PERIOD_US;\n    int16_t v = adsRead();\n    uint16_t h = qHead;\n    uint16_t nh = (h + 1) % QN;\n    if (nh != qTail) {\n      q[h].t = now;\n      q[h].v = v;\n      __sync_synchronize();     // make sure the sample is stored before the sender can see it\n      qHead = nh;\n    } else {\n      dropped++;\n    }\n  }\n}\n";
+TXT.bt="// On your PC after upload:\n//   sudo rfcomm bind 0 20:50:0D:4E:0A:3E\n//   python tests/check_rate.py /dev/rfcomm0\n//   python emg_server.py --port /dev/rfcomm0 --gain 1\n//   then open http://localhost:8000\n// DIY sEMG streamer: ESP32 + ADS1015 (differential AIN0-AIN1), 1 kHz, text lines \"micros,counts\"\n//\n// Sampling runs in loop() at exactly 1 kHz and puts samples in a ring buffer.\n// A separate task sends the buffer out in small batches, so a slow or stalled\n// Bluetooth link delays delivery but never stops the sampling.\n#include <Wire.h>\n\n#define USE_BT 1   // 1 = Bluetooth (use for body recordings). 0 = USB serial (bench tests ONLY, no electrodes on you)\n\n#if USE_BT\n#include \"BluetoothSerial.h\"\nBluetoothSerial bt;\n#endif\nStream* out;\n\nconst uint8_t ADS_ADDR = 0x48;\nconst uint32_t PERIOD_US = 1000;  // 1 kHz output\nuint32_t nextT;\n\n// ---- ring buffer: loop() writes, sendTask() reads ----\nconst uint16_t QN = 2048;          // about 2 s of samples\nstruct Sample { uint32_t t; int16_t v; };\nSample q[QN];\nvolatile uint16_t qHead = 0;       // next slot to write (sampler only)\nvolatile uint16_t qTail = 0;       // next slot to read (sender only)\nvolatile uint32_t dropped = 0;     // samples lost because the buffer was full\n\nvoid adsConfig() {\n  // 0x0483: continuous, AIN0-AIN1, +/-2.048 V, 1600 SPS, comparator off\n  Wire.beginTransmission(ADS_ADDR);\n  Wire.write(0x01); Wire.write(0x04); Wire.write(0x83);\n  Wire.endTransmission();\n  Wire.beginTransmission(ADS_ADDR);   // point to conversion register\n  Wire.write(0x00);\n  Wire.endTransmission();\n}\n\nint16_t adsRead() {\n  Wire.requestFrom(ADS_ADDR, (uint8_t)2);\n  int16_t v = (Wire.read() << 8) | Wire.read();\n  return v >> 4;  // 12-bit, 1 mV/count at +/-2.048 V\n}\n\nvoid sendTask(void*) {\n  static char buf[1600];\n  uint32_t lastDropped = 0;\n  for (;;) {\n#if USE_BT\n    if (!bt.hasClient()) {           // nobody connected: throw away stale samples\n      qTail = qHead;\n      dropped = 0;\n      lastDropped = 0;\n      vTaskDelay(pdMS_TO_TICKS(50));\n      continue;\n    }\n#endif\n    int n = 0;\n    uint16_t t = qTail;\n    while (t != qHead && n < (int)sizeof(buf) - 40) {\n      n += snprintf(buf + n, sizeof(buf) - n, \"%lu,%d\\n\",\n                    (unsigned long)q[t].t, (int)q[t].v);\n      t = (t + 1) % QN;\n    }\n    uint32_t d = dropped;\n    if (d != lastDropped && n < (int)sizeof(buf) - 40) {\n      n += snprintf(buf + n, sizeof(buf) - n, \"# dropped %lu\\n\", (unsigned long)d);\n      lastDropped = d;\n    }\n    if (n > 0) {\n      int off = 0;\n      while (off < n) {\n        size_t w = out->write((const uint8_t*)buf + off, n - off);\n        if (w == 0) vTaskDelay(1);\n        off += (int)w;\n      }\n      qTail = t;\n    }\n    vTaskDelay(pdMS_TO_TICKS(10));   // send roughly every 10 ms, about 10 samples per batch\n  }\n}\n\nvoid setup() {\n#if USE_BT\n  bt.begin(\"EMG-Logger\");\n  out = &bt;\n#else\n  Serial.begin(921600);\n  out = &Serial;\n#endif\n  Wire.begin(21, 22);\n  Wire.setClock(400000);\n  adsConfig();\n  xTaskCreatePinnedToCore(sendTask, \"send\", 4096, NULL, 1, NULL, 0);\n  nextT = micros() + PERIOD_US;\n}\n\nvoid loop() {\n  uint32_t now = micros();\n  if ((int32_t)(now - nextT) >= 0) {\n    nextT += PERIOD_US;\n    int16_t v = adsRead();\n    uint16_t h = qHead;\n    uint16_t nh = (h + 1) % QN;\n    if (nh != qTail) {\n      q[h].t = now;\n      q[h].v = v;\n      __sync_synchronize();     // make sure the sample is stored before the sender can see it\n      qHead = nh;\n    } else {\n      dropped++;\n    }\n  }\n}\n";
+TXT.dac="// On your PC after upload:\n//   python emg_server.py --port /dev/ttyUSB0 --gain 1\n// EMG test rig: the normal 1 kHz sampler/sender from firmware/emg_firmware.ino, plus a test signal\n// from the ESP32's own DAC, so the whole software chain can be tested with no phone and no extra parts.\n//\n// Wiring (USB unplugged while wiring):\n//   GPIO25 (DAC1, labelled P25)  --- 1 kOhm ---  ADS1015 A0\n//   ADS1015 A1 stays on the 1.65 V divider node.   Nothing else changes.\n//\n// Use: hold the BOOT button (GPIO0) = \"muscle on\" (100 Hz sine around mid-scale). Release = rest.\n// Do NOT hold BOOT while resetting or plugging in USB (that enters the bootloader).\n//\n// Bench test only: no electrodes on your body. Output goes over USB serial (USE_BT 0).\n#include <Wire.h>\n\n#define USE_BT 0   // 0 = USB serial (this test). 1 = Bluetooth.\n#define SIGNAL_NOISE 0   // 0 = 100 Hz sine (median frequency should read about 100 Hz). 1 = random noise (EMG-like).\n\n#if USE_BT\n#include \"BluetoothSerial.h\"\nBluetoothSerial bt;\n#endif\nStream* out;\n\nconst uint8_t ADS_ADDR = 0x48;\nconst uint32_t PERIOD_US = 1000;  // 1 kHz output\nuint32_t nextT;\n\n// ---- test signal ----\nconst int DAC_PIN = 25;           // DAC1\nconst int BTN_PIN = 0;            // BOOT button, reads LOW when pressed\nconst float SIG_HZ = 100.0f;\nconst float SIG_AMP = 30.0f;      // DAC steps (about 12.9 mV each): about +/-390 mV, i.e. about +/-390 counts\nconst int NOISE_AMP = 40;         // DAC steps, used when SIGNAL_NOISE is 1\nconst int DAC_MID = 128;          // about 1.65 V, the same level as the divider node\nfloat phase = 0.0f;\n\nvoid updateDac() {\n  int v = DAC_MID;\n  if (digitalRead(BTN_PIN) == LOW) {\n#if SIGNAL_NOISE\n    v = DAC_MID + (int)(esp_random() % (2 * NOISE_AMP + 1)) - NOISE_AMP;\n#else\n    v = DAC_MID + (int)lroundf(SIG_AMP * sinf(phase));\n#endif\n  }\n  phase += 2.0f * PI * SIG_HZ / 1000.0f;   // advance one sample at 1 kHz\n  if (phase > 2.0f * PI) phase -= 2.0f * PI;\n  dacWrite(DAC_PIN, v);\n}\n\n// ---- ring buffer: loop() writes, sendTask() reads ----\nconst uint16_t QN = 2048;          // about 2 s of samples\nstruct Sample { uint32_t t; int16_t v; };\nSample q[QN];\nvolatile uint16_t qHead = 0;\nvolatile uint16_t qTail = 0;\nvolatile uint32_t dropped = 0;\n\nvoid adsConfig() {\n  // 0x0483: continuous, AIN0-AIN1, +/-2.048 V, 1600 SPS, comparator off\n  Wire.beginTransmission(ADS_ADDR);\n  Wire.write(0x01); Wire.write(0x04); Wire.write(0x83);\n  Wire.endTransmission();\n  Wire.beginTransmission(ADS_ADDR);   // point to conversion register\n  Wire.write(0x00);\n  Wire.endTransmission();\n}\n\nint16_t adsRead() {\n  Wire.requestFrom(ADS_ADDR, (uint8_t)2);\n  int16_t v = (Wire.read() << 8) | Wire.read();\n  return v >> 4;  // 12-bit, 1 mV/count at +/-2.048 V\n}\n\nvoid sendTask(void*) {\n  static char buf[1600];\n  uint32_t lastDropped = 0;\n  for (;;) {\n#if USE_BT\n    if (!bt.hasClient()) {           // nobody connected: throw away stale samples\n      qTail = qHead;\n      dropped = 0;\n      lastDropped = 0;\n      vTaskDelay(pdMS_TO_TICKS(50));\n      continue;\n    }\n#endif\n    int n = 0;\n    uint16_t t = qTail;\n    while (t != qHead && n < (int)sizeof(buf) - 40) {\n      n += snprintf(buf + n, sizeof(buf) - n, \"%lu,%d\\n\",\n                    (unsigned long)q[t].t, (int)q[t].v);\n      t = (t + 1) % QN;\n    }\n    uint32_t d = dropped;\n    if (d != lastDropped && n < (int)sizeof(buf) - 40) {\n      n += snprintf(buf + n, sizeof(buf) - n, \"# dropped %lu\\n\", (unsigned long)d);\n      lastDropped = d;\n    }\n    if (n > 0) {\n      int off = 0;\n      while (off < n) {\n        size_t w = out->write((const uint8_t*)buf + off, n - off);\n        if (w == 0) vTaskDelay(1);\n        off += (int)w;\n      }\n      qTail = t;\n    }\n    vTaskDelay(pdMS_TO_TICKS(10));   // send roughly every 10 ms\n  }\n}\n\nvoid setup() {\n#if USE_BT\n  bt.begin(\"EMG-Logger\");\n  out = &bt;\n#else\n  Serial.begin(921600);\n  out = &Serial;\n#endif\n  pinMode(BTN_PIN, INPUT_PULLUP);\n  dacWrite(DAC_PIN, DAC_MID);\n  Wire.begin(21, 22);\n  Wire.setClock(400000);\n  adsConfig();\n  xTaskCreatePinnedToCore(sendTask, \"send\", 4096, NULL, 1, NULL, 0);\n  nextT = micros() + PERIOD_US;\n}\n\nvoid loop() {\n  uint32_t now = micros();\n  if ((int32_t)(now - nextT) >= 0) {\n    nextT += PERIOD_US;\n    int16_t v = adsRead();\n    uint16_t h = qHead;\n    uint16_t nh = (h + 1) % QN;\n    if (nh != qTail) {\n      q[h].t = now;\n      q[h].v = v;\n      __sync_synchronize();\n      qHead = nh;\n    } else {\n      dropped++;\n    }\n    updateDac();                     // set the test signal for the next sample\n  }\n}\n";
+const DACT=[...Array(10).keys()].map(i=>Math.round(30*Math.sin(2*Math.PI*i/10)));
+const dacV=st=>V()*(128+st)/256;
+const cnt=(target,tol,label)=>({label,fn:()=>{const i=api.adsInfo();const c=i.ok?api.counts():-1;return{exp:'about '+(target>0?'+':'')+target,got:String(Math.round(c)),ok:i.ok&&Math.abs(c-target)<=tol}}});
+const stream=(a,t)=>{const i=a.adsInfo();if(S.fault&&S.fault.usebt){if(a.every(300,t))a.print('x#~¿ÿ%@¤*!q°');return}const c=i.ok?Math.round(a.counts()):-1;a.trace(c);if(a.every(400,t))a.print(Math.round(t*1000)+','+c)};
+const ADS={kind:'ads',id:'U1',col:6,row:'j'};
+LESSONS.push(
+{id:'d1',group:1,name:'Circuit 1: Power rails',mcu:false,force:F38,faults:[{label:'Leave out the GND wire',f:{remove:'WG'},say:'Your PDF lists this symptom: about 0.08 V instead of 3.3 V means the 3V3 or GND wire to the rails is missing.'}],steps:[
+ wire('pin:POWER','t+:2','#d3322a',{wid:'WP',title:'3V3 to the + rail',do:'Connect ESP32 3V3 to the + rail beside the red line, hole 2.',why:'The ESP32 regulator feeds the rail. The ADS1015 will also use this rail, so 3V3 is the only supply you use here.',expect:'The + rail has 3.3 V on it, but your meter needs a ground reference, which comes next.',checks:[{at:'t+:28',v:'VCC',label:'+ rail, column 28'}],mistake:'Using the 5V or VIN pin. The ADS1015 must stay on 3V3.',meter:{mode:'dcv',red:'t+:5',black:null}}),
+ wire('pin:GND','t-:2','#23262a',{wid:'WG',title:'GND to the − rail',do:'Connect ESP32 GND to the − rail beside the blue line, hole 2.',why:'Now the two rails form a supply you can measure.',expect:'Red probe on +, black on −, DCV 20: about 3.3 V.',checks:[{at:'t+:28',v:'VCC',label:'+ rail'},{at:'t-:28',v:0,label:'− rail'}],mistake:'Selecting ACV on the meter. Use DCV 20.',meter:{mode:'dcv',red:'t+:5',black:'t-:5'}}),
+ {t:'look',hl:['t+','t-'],title:'Find the rail break',do:'Note the break in the rails near column 30. The highlighted section stops there.',why:'Each rail is two separate strips on this board. A part placed across the break would lose its connection.',expect:'Everything left of the break reads 3.3 V. The + rail past the break is not connected.',checks:[{at:'t+:28',v:'VCC',label:'+ rail, column 28'},{at:'t+:33',v:'float',label:'+ rail, column 33'}],mistake:'Putting parts at the break. To use the right half, bridge the break with a short jumper.',meter:{mode:'dcv',red:'t+:33',black:'t-:5'}}
+]},
+{id:'d2',group:1,name:'Circuit 2: 1.65 V reference divider',mcu:false,force:F38,pre:['d1'],steps:[
+ part(R('R1','t+:20','20a',10000),{title:'R1, + rail to row 20',do:'Place one 10 kΩ from the + rail to hole 20a.',why:'R1 is the top half of the divider.',expect:'Row 20 reads about 3.3 V, because no current flows yet.',checks:[{at:'20c',v:'VCC',label:'Row 20'}],mistake:'Placing it near the rail break at column 30. Row 20 is safely away from it.',meter:{mode:'dcv',red:'20c',black:'t-:5'}}),
+ part(R('R2','20c','t-:22',10000),{title:'R2, row 20 to − rail',do:'Place the second 10 kΩ from hole 20c to the − rail.',why:'Two equal resistors split the supply in half. Row 20 is now your reference node, VREF.',expect:'VREF sits at half the rail voltage, about 1.64 V.',checks:[{at:'20e',v:x=>x/2,tol:.03,label:'VREF'}],mistake:'Using hole 20f. That is across the centre gap and is not part of VREF.',meter:{mode:'dcv',red:'20e',black:'t-:5'}}),
+ {t:'look',title:'See the 5.5 kΩ trap',do:'Set the meter to 20k and measure R1 with the ESP32 still wired.',why:'The meter also measures a second route: through R2 and the ESP32 back to the + rail.',expect:'About 5.5 kΩ. The resistor is fine. The parallel path lowers the reading.',checks:[{ohm:['t+:5','20b'],v:5500,tol:300,label:'R1, ESP32 connected'}],mistake:'Throwing away a good resistor because of this reading.',meter:{mode:'ohm',red:'t+:5',black:'20b'}},
+ {t:'off',ids:['WP','WG'],title:'Unplug the ESP32 power wires',do:'Remove the 3V3 and GND wires from the rails.',why:'This removes the parallel path, so the meter sees only the resistor.',expect:'R1 and R2 now each read about 9.7 to 10 kΩ.',checks:[{ohm:['t+:5','20b'],v:10000,tol:350,label:'R1'},{ohm:['20b','t-:5'],v:10000,tol:350,label:'R2'}],mistake:'Measuring resistors with power applied. Disconnect first.',meter:{mode:'ohm',red:'20b',black:'t-:5'}},
+ {t:'on',title:'Reconnect power',do:'Put the 3V3 and GND wires back on the rails.',why:'The divider is live again.',expect:'VREF to the − rail: about 1.64 V.',checks:[{at:'20e',v:x=>x/2,tol:.03,label:'VREF'}],mistake:'Swapping the two wires when reconnecting. Check red to +, black to −.',meter:{mode:'dcv',red:'20e',black:'t-:5'}}
+]},
+{id:'d3',group:1,name:'Circuit 3: ADS1015 and the I2C scan',mcu:true,force:F38,pre:['d1','d2'],text:TXT.scan,
+ faults:[{label:'Disconnect VDD',f:{remove:'WVDD'},say:'The ADS1015 has no power, so the scan finds nothing. Your PDF says to check VDD and GND first, then SDA and SCL, then ADDR.'},{label:'Disconnect SDA',f:{remove:'WSDA'},say:'The chip has power but no data line, so the scan finds nothing.'},{label:'Disconnect ADDR',f:{remove:'WADDR'},say:'Without ADDR tied down, the address is not set. The simulator treats this as no device. Whether your module has a built-in pull-down depends on the module.'}],
+ prog:(a,t)=>{if(a.every(2000,t)){const i=a.adsInfo();a.print(i.ok?'Found device at '+i.addr:'No devices found')}},
+ steps:[
+ part(ADS,{title:'Seat the ADS1015 module',do:'Plug the module in with its pins in row j, columns 6 to 15: VDD at 6, then GND, SCL, SDA, ADDR, ALRT, A0, A1, A2, A3.',why:'Each pin gets its own column group for wiring. Pin order varies between modules, so follow the labels on yours.',expect:'Nothing is powered yet.',checks:[{at:'6g',v:'float',label:'VDD column'}],mistake:'Copying these column positions on a module with different pin order. Trust the printed labels.'}),
+ wire('6f','t+:7','#d3322a',{wid:'WVDD',title:'VDD to 3V3',do:'Connect hole 6f to the + rail at hole 7.',why:'This powers the ADS1015 from 3V3.',expect:'VDD reads about 3.3 V.',checks:[{at:'6g',v:'VCC',label:'VDD'}],mistake:'Using 5V or VIN. Its I2C lines could then put 5 V on ESP32 pins.',meter:{mode:'dcv',red:'6g',black:'t-:5'}}),
+ wire('7f','t-:8','#23262a',{wid:'WGND',title:'GND to ground',do:'Connect hole 7f to the − rail at hole 8.',why:'The chip and ESP32 must share ground.',expect:'GND reads 0 V.',checks:[{at:'7g',v:0,label:'GND'}],mistake:'Skipping this because the module has a GND pin nearby. It still needs a wire.'}),
+ wire('8f','pin:IO22','#e7a117',{wid:'WSCL',title:'SCL to GPIO22',do:'Connect hole 8f to IO22.',why:'SCL is the I2C clock.',expect:'No visible change.',checks:[],mistake:'Swapping SCL and SDA. The scan finds nothing.'}),
+ wire('9f','pin:IO21','#2b6fd6',{wid:'WSDA',title:'SDA to GPIO21',do:'Connect hole 9f to IO21.',why:'SDA is the I2C data line.',expect:'No visible change.',checks:[],mistake:'Landing on IO23, which is close by on the header.'}),
+ wire('10f','t-:10','#23262a',{wid:'WADDR',title:'ADDR to ground',do:'Connect hole 10f to the − rail at hole 10. Leave ALRT open.',why:'Tying ADDR to ground selects address 0x48.',expect:'ADDR reads 0 V.',checks:[{at:'10g',v:0,label:'ADDR'}],mistake:'Wiring ALRT by accident, which sits in the next column.'}),
+ {t:'code',title:'Run the I2C scanner',do:'Upload tests/i2c_scanner/i2c_scanner.ino and open the Serial Monitor at 115200 baud.',why:'The scanner calls every I2C address and reports which ones answer.',expect:'Found device at 0x48.',checks:[{serial:true,label:'Serial Monitor'},{label:'Device',fn:()=>{const i=api.adsInfo();return{exp:'0x48',got:i.ok?i.addr:'none',ok:i.ok&&i.addr==='0x48'}}}],mistake:'A wrong baud rate shows garbage rather than a scan result.'}
+ ]},
+{id:'d4',group:1,name:'Circuit 4: Reference and trimpot',mcu:true,force:F38,pre:['d1','d2','d3'],text:TXT.fw,trace:true,prog:stream,
+ faults:[{label:'Upload with USE_BT 1',f:{usebt:1},say:'The sketch is in Bluetooth mode, so the Serial Monitor has no 921600 baud data. Your firmware file has USE_BT 1 by default. Set it to 0 and upload again.'},{label:'Disconnect SDA',f:{remove:'WSDA'},say:'Every reading becomes −1 because the ADS1015 is not answering. Go back to Circuit 3. The firmware sets up the chip only once at boot, so press EN after fixing wiring or restoring VDD.'}],
+ steps:[
+ wire('13g','20e','#8d6be0',{wid:'WA1',title:'A1 to VREF',do:'Connect hole 13g (A1) to hole 20e (VREF).',why:'A1 is the zero point. The chip reports the difference between A0 and A1.',expect:'A1 reads about 1.64 V.',checks:[{at:'13h',v:x=>x/2,tol:.03,label:'A1'}],mistake:'Using 20f. That hole is on the wrong side of the gap.',meter:{mode:'dcv',red:'13h',black:'t-:5'}}),
+ part({kind:'pot',id:'RV1',col:24,row:'d'},{title:'Place the trimpot',do:'Put its three pins in 24d, 25d and 26d.',why:'The middle pin is the wiper. Check your trimpot to confirm which pin that is.',expect:'All three columns float.',checks:[{at:'25a',v:'float',label:'Wiper'}],mistake:'Assuming the pin order. Some trimpots are not in a straight line.'}),
+ wire('24a','t+:23','#d3322a',{wid:'WT1',title:'Outer pin to 3V3',do:'Connect hole 24a to the + rail at hole 23.',why:'One end of the track goes to the 3V3 rail.',expect:'Wiper reads about 3.3 V, as no current flows yet.',checks:[{at:'25a',v:'VCC',label:'Wiper'}],mistake:'Using a rail hole past column 30, across the break.'}),
+ wire('26a','t-:26','#23262a',{wid:'WT2',title:'Other outer pin to GND',do:'Connect hole 26a to the − rail at hole 26.',why:'The trimpot is now a voltage source from 0 V to 3.3 V.',expect:'Wiper position sets a voltage between the rails.',checks:[{at:'25a',v:x=>x*.5,tol:.03,label:'Wiper, centred'}],mistake:'Wiring the wiper to a rail. At one end of its travel that can short the supply.',ctrl:{RV1:.5},meter:{mode:'dcv',red:'25a',black:'t-:5'}}),
+ wire('25e','12g','#23a455',{wid:'Wwip',title:'Wiper to A0',do:'Connect hole 25e (wiper) to hole 12g (A0).',why:'A0 is the measured input.',expect:'A0 matches the wiper voltage. The ADS1015 input draws almost no current.',checks:[{at:'12h',v:x=>x*.5,tol:.03,label:'A0, centred'}],mistake:'Connecting to A2. Only A0 and A1 are used by this setup.',ctrl:{RV1:.5}}),
+ {t:'code',ctrl:{RV1:.5},title:'Upload, wiper in the middle',do:'Upload firmware/emg_firmware.ino with USE_BT 0. Open the Serial Monitor at 921600 baud.',why:'Counts = (A0 voltage − 1.65 V) × 1000. The real output is about 1000 lines per second. It is slowed down here so you can read it.',expect:'Lines of microseconds,counts with counts near 0.',checks:[{serial:true,label:'Serial Monitor'},cnt(0,20,'Counts, centred')],mistake:'Garbage means Bluetooth mode. Every reading −1 means the ADS1015 is not answering.',meter:{mode:'dcv',red:'12h',black:'t-:5'}},
+ {t:'look',ctrl:{RV1:1},title:'Wiper at the 3V3 end',do:'Turn the trimpot fully toward the 3V3 end.',why:'A0 is about 1.64 V above A1.',expect:'Counts about +1643. A multimeter at A0 should agree.',checks:[cnt(1643,20,'Counts')],mistake:'Turning fast and missing the end stop. Turn slowly.',meter:{mode:'dcv',red:'12h',black:'t-:5'}},
+ {t:'look',ctrl:{RV1:0},title:'Wiper at the GND end',do:'Turn the trimpot fully toward the GND end.',why:'A0 is about 1.64 V below A1. A differential reading can go negative.',expect:'Counts about −1644.',checks:[cnt(-1644,20,'Counts')],mistake:'Reading the direction as wrong. Which way is positive depends on how you wired the outer pins.',meter:{mode:'dcv',red:'12h',black:'t-:5'}}
+ ]},
+{id:'d5',group:1,name:'Circuit 5: Sample rate check over USB',mcu:true,force:F38,pre:['d1','d2','d3','d4'],text:TXT.rate,
+ prog:(a,t)=>{const i=a.adsInfo();a.once('s1',i.ok?'1000.0 Hz':'no samples');if(i.ok){a.once('s2','no gaps over about 2 ms');a.once('s3','verdict: good')}},
+ steps:[{t:'code',title:'Run the rate check',do:'Close the Serial Monitor and dashboard, then run check_rate.py on /dev/ttyUSB0.',why:'Only one program can hold the serial port. The script confirms the firmware keeps up with 1000 samples per second.',expect:'1000.0 Hz, no gaps over about 2 ms, verdict good. The simulator repeats these values from your PDF. It cannot measure your hardware timing.',checks:[{serial:true,label:'Script output'}],mistake:'Leaving the Serial Monitor open. The port will be busy.'}]},
+{id:'d6',group:1,name:'Circuit 6: Bluetooth and the dashboard',mcu:true,force:F38,pre:['d1','d2','d3','d4'],text:TXT.bt,trace:true,
+ prog:(a,t)=>{const b=S.built;if(b>=4){a.once('s1','1000.0 Hz');a.once('s2','largest gap about 1003 microseconds');a.once('s3','no # dropped lines')}if(b>=5){const i=a.adsInfo();a.trace(i.ok?Math.round(a.counts()):-1)}},
+ steps:[
+ {t:'code',title:'Upload in Bluetooth mode',do:'Set USE_BT 1 and upload. No new wiring.',why:'Samples now go over Bluetooth. USB stays connected for power only.',expect:'The Serial Monitor is no longer useful. Data now goes to Bluetooth.',checks:[],mistake:'Reading USB for data in this mode.'},
+ {t:'look',title:'Pair the board',do:'Pair "EMG-Logger" in Ubuntu Bluetooth settings.',why:'Pairing has to happen before the serial link can be created.',expect:'EMG-Logger shows as paired. The simulator has no Bluetooth, so this step is a reminder only.',checks:[],mistake:'Pairing but skipping the bind step.'},
+ {t:'look',title:'Bind the serial port',do:'Run: sudo rfcomm bind 0 20:50:0D:4E:0A:3E',why:'This creates /dev/rfcomm0, which programs can open like a serial port.',expect:'/dev/rfcomm0 now exists.',checks:[],mistake:'Using another board with this address. Each ESP32 has its own.'},
+ {t:'look',title:'Check the rate',do:'Run check_rate.py on /dev/rfcomm0.',why:'This confirms Bluetooth keeps up with the sampling rate.',expect:'1000.0 Hz, largest gap about 1003 microseconds, no # dropped lines. These values come from your PDF, not a measurement.',checks:[{serial:true,label:'Script output'}],mistake:'Running it while the dashboard holds the port.'},
+ {t:'look',ctrl:{RV1:.8},title:'Open the dashboard',do:'Run emg_server.py with --gain 1, open http://localhost:8000, and move the Knob slider.',why:'--gain 1 is correct because there is no amplifier yet.',expect:'A live trace follows the trimpot. Calibrate rest and max, press Record, and you get session_*_raw.csv and session_*_reps.csv.',checks:[cnt(987,25,'Counts at 80% knob')],mistake:'Using the future amplifier gain now, which scales every reading wrongly.'}
+ ]},
+{id:'d7',group:1,name:'Circuit 7: DAC test signal',mcu:true,force:F38,pre:['d1','d2','d3','d4'],text:TXT.dac,trace:true,boot:true,
+ prog:(a,t)=>{const m=S.mem,held=!!S.pressed.BOOT;const st=held?DACT[Math.floor(t/100)%10]:0;a.analog('IO25',dacV(st));const c=a.adsInfo().ok?Math.round(a.counts()):-1;a.trace(c);if(!held){m.pk=0;m.w={}}else{m.pk=Math.max(m.pk||0,Math.abs(c));(m.w=m.w||{})[Math.floor(t/100)%10]=c}if(!held&&a.every(400,t))a.print(Math.round(t*1000)+','+c);else if(held&&Math.floor(t/400)!==m.pl){m.pl=Math.floor(t/400);a.print(Math.round(t*1000)+','+c)}},
+ steps:[
+ {t:'off',ids:['Wwip'],title:'Disconnect the trimpot from A0',do:'Remove the wire between the trimpot wiper and A0. A1 stays on VREF.',why:'A0 must have only one signal source.',expect:'A0 is now floating.',checks:[{at:'12h',v:'float',label:'A0'}],mistake:'Leaving the trimpot connected. It would fight the DAC signal.'},
+ part(R('R5','12h','17h',1000),{title:'Add the 1 kΩ resistor',do:'Place a 1 kΩ resistor from hole 12h to hole 17h.',why:'It sits in series between the DAC and A0. Note that the parts list in your PDF has no 1 kΩ, so get one before this test.',expect:'A0 is still floating.',checks:[{at:'12h',v:'float',label:'A0'}],mistake:'Using one of the 10 kΩ divider resistors and upsetting VREF.'}),
+ wire('17f','pin:IO25','#e7a117',{wid:'WDAC',title:'GPIO25 to the resistor',do:'Connect hole 17f to IO25.',why:'GPIO25 is an ESP32 DAC output, so it can make a true analog voltage.',expect:'No signal until the code runs.',checks:[],mistake:'Picking another pin. On this chip only GPIO25 and GPIO26 are DAC outputs.'}),
+ {t:'code',title:'Upload, BOOT released',do:'Upload tests/dac_test/dac_test.ino. Then run the dashboard on /dev/ttyUSB0 with --gain 1, because this sketch has USE_BT 0. Calibrate rest while pressing nothing.',why:'With BOOT up the code holds the DAC at step 128, about the same level as VREF, so A0 and A1 nearly match.',expect:'Counts stay near 0. The output is micros,counts over USB at 921600 baud.',checks:[{serial:true,label:'Serial output'},cnt(0,20,'Counts at rest')],mistake:'Running the dashboard on /dev/rfcomm0. This sketch does not start Bluetooth.'},
+ {t:'look',hold:'BOOT',title:'Hold BOOT for the test signal',do:'Hold BOOT (GPIO0) and calibrate max. It is held for you on this step.',why:'The code writes 10 DAC steps per cycle at 1 kHz: 0, 18, 29, 29, 18, 0, −18, −29, −29, −18. The trace is slowed from 100 Hz to 1 Hz so you can see those steps.',expect:'A 100 Hz signal of about ±375 mV peak and about 279 counts RMS. The peak is 29 steps, not the 30 set in the code, because no sample lands exactly on the top of the sine.',checks:[{serial:true,label:'Serial output'},{label:'Peak counts',fn:()=>{const k=S.mem.pk||0;return{exp:'about ±375',got:'±'+k,ok:k>350?(k<395):null}}},{label:'RMS counts',fn:()=>{const w=Object.values(S.mem.w||{}),q=w.length===10?Math.round(Math.sqrt(w.reduce((x,c)=>x+c*c,0)/10)):0;return{exp:'about 279',got:q?String(q):'measuring',ok:q?Math.abs(q-279)<=12:null}}}],mistake:'Never hold BOOT during reset or while plugging in USB. That enters the bootloader.'},
+ {t:'look',title:'Release BOOT',do:'Release BOOT. Each hold and release should count as one rep on the dashboard. Use the Hold BOOT button below to repeat it.',why:'The signal runs only while BOOT is held. The firmware has no rep counter, so reps come from your dashboard.',expect:'Counts return near 0. % max rises with each hold, and reps are written to reps.csv. The simulator shows the signal only and does not run your dashboard.',checks:[cnt(0,20,'Counts at rest')],mistake:'Pressing once and expecting the signal to stay on. Your PDF says toggle, but this code needs BOOT held.'}
+ ]});
+LESSONS.forEach(l=>{if(l.pre)l.preSteps=l.pre.flatMap(id=>LESSONS.find(x=>x.id===id).steps)});
+LESSONS.forEach(l=>l.steps.forEach(s=>{if(s.checks)s.checks=s.checks.filter(c=>!c.skip)}));
+/* ---------- State ---------- */
+const S={board:'esp38',bb:'split',lesson:'d1',analog:{},trace:[],meter:{mode:'dcv',red:'t+:5',black:'t-:5',arm:null},mode:'watch',built:1,phase:'place',over:{},free:[],removed:new Set(),fault:null,power:true,ctrl:{},pressed:{},drive:{},manual:{},serial:[],mem:{},t0:0,picks:[],tool:'wire',rval:220,ledc:'red',msg:null,probe:null,hover:null,strips:false,seen:{},auto:null,fid:0};
+const $=id=>document.getElementById(id);
+const B=()=>BOARDS[S.board],L=()=>LESSONS.find(l=>l.id===S.lesson);
+const V=()=>B().vcc;
+const LETTERS='abcdefghij',X0=290,PITCH=16;
+const RY={'t+':46,'t-':62,'b+':298,'b-':314};
+const cols=()=>S.bb==='half'?30:63;
+const LY=l=>{const i=LETTERS.indexOf(l);return i<5?98+i*16:198+(i-5)*16};
+const colX=n=>X0+22+(n-1)*PITCH;
+const bbW=()=>44+(cols()-1)*PITCH;
+const res=h=>h&&h.startsWith('pin:')&&B().roles[h.slice(4)]?'pin:'+B().roles[h.slice(4)]:h;
+function allPins(){const b=B();return[...(b.top||[]),...(b.bottom||[]),...(b.left||[]),...(b.right||[])]}
+function pinOf(h){const id=h.slice(4);return allPins().find(p=>p.id===id)}
+function strip(h){if(h.startsWith('pin:')){const p=pinOf(h);return p&&p.type==='gnd'?'GND':h}
+ if(h.includes(':')){const[r0,c0]=h.split(':');return S.bb==='split'&&+c0>30?r0+'R':r0}const m=h.match(/^(\d+)([a-j])$/);return(LETTERS.indexOf(m[2])<5?'u':'l')+m[1]}
+function fmt(s){if(typeof s==='function')s=s({V:V(),adc:B().adc||1023});const r=B().roles;return String(s).replace(/\{VCC\}/g,V()+' V').replace(/\{(\w+)\}/g,(m,k)=>{const p=r[k]&&allPins().find(q=>q.id===r[k]);return p?p.label:m})}
+/* ---------- Pin geometry ---------- */
+let PINPOS={};
+function boardSVG(){const b=B();PINPOS={};let s='';const lab=(x,y,t,a,rot,cl)=>`<text x="${x}" y="${y}" font-size="8" font-family="IBM Plex Mono,monospace" fill="${cl||'#f4f6f2'}" text-anchor="${a}"${rot?` transform="rotate(${rot} ${x} ${y})"`:''}>${t}</text>`;
+ const pin=(p,x,y)=>{PINPOS['pin:'+p.id]={x,y};const c=p.type==='pwr'?'#e4574c':p.type==='gnd'?'#101214':p.type==='nc'?'#555':'#20242a';
+  return`<rect x="${x-4.5}" y="${y-4.5}" width="9" height="9" fill="${c}" stroke="#d9c177" stroke-width="1"/><rect class="pinhit" data-h="pin:${p.id}" x="${x-7.5}" y="${y-7.5}" width="15" height="15"/>`};
+ if(b.top){const y0=44;s+=`<rect x="14" y="${y0}" width="250" height="232" rx="8" fill="${b.color}" stroke="#084f58"/><rect x="2" y="${y0+24}" width="44" height="42" rx="2" fill="#b8bcc0" stroke="#7d8084"/><rect x="4" y="${y0+170}" width="32" height="34" rx="3" fill="#25282c"/><rect x="60" y="${y0+74}" width="100" height="26" fill="#22262a"/><text x="60" y="${y0+62}" font-family="Barlow Condensed,sans-serif" font-weight="600" font-size="16" fill="#eaf3f2">${b.name}</text>`;
+  b.top.forEach((p,i)=>{const x=38+i*16,y=y0+12;s+=pin(p,x,y)+lab(x+3,y+11,p.label,'end',-90)});
+  b.bottom.forEach((p,i)=>{const x=54+i*16,y=y0+220;s+=pin(p,x,y)+lab(x+3,y-10,p.label,'start',-90)})}
+ else if(b.left){const n=b.left.length,step=b.mcu&&n>15?15:20,h=step*n+24,y0=(350-h)/2;s+=`<rect x="56" y="${y0}" width="170" height="${h}" rx="5" fill="${b.color}" stroke="#0007"/><rect x="118" y="${y0-8}" width="46" height="24" rx="2" fill="#b8bcc0"/><rect x="118" y="${y0+h/2-22}" width="46" height="44" fill="#16191c"/><text x="141" y="${y0+h/2+38}" font-family="Barlow Condensed,sans-serif" font-weight="600" font-size="12.5" fill="#eaf3f2" text-anchor="middle">${b.name.replace(' DevKit V1','').replace(' DevKit','').replace('Raspberry Pi ','')}</text>`;
+  b.left.forEach((p,i)=>{const y=y0+18+i*step;s+=pin(p,70,y)+lab(79,y+3,p.label,'start')});
+  b.right.forEach((p,i)=>{const y=y0+18+i*step;s+=pin(p,212,y)+lab(203,y+3,p.label,'end')})}
+ else{s+=`<rect x="80" y="105" width="170" height="130" rx="6" fill="${b.color}" stroke="#0007"/><rect x="92" y="130" width="50" height="50" rx="4" fill="#1a1c1e"/><text x="164" y="222" font-family="Barlow Condensed,sans-serif" font-weight="600" font-size="14" fill="#f6eeee" text-anchor="middle">5 V power module</text>`;
+  b.right.forEach((p,i)=>{const y=130+i*30;s+=pin(p,236,y)+lab(226,y+3,p.label,'end')})}
+ return s}
+/* ---------- Geometry of holes ---------- */
+function XY(h){if(h.startsWith('pin:'))return PINPOS[h]||{x:0,y:0};if(h.includes(':')){const[r,c]=h.split(':');return{x:colX(+c),y:RY[r]}}const m=h.match(/^(\d+)([a-j])$/);return{x:colX(+m[1]),y:LY(m[2])}}
+function stripRect(s){const pad=7;if(s.startsWith('pin:')){const p=PINPOS[s];return p?[p.x-7,p.y-7,14,14]:null}
+ if(s==='GND')return null;if(s.endsWith('R'))return[colX(31)-pad,RY[s.slice(0,2)]-pad,colX(cols())-colX(31)+pad*2,pad*2];if(RY[s]!==undefined)return[colX(1)-pad,RY[s]-pad,(S.bb==='split'?colX(29):colX(cols()))-colX(1)+pad*2,pad*2];
+ const n=+s.slice(1),up=s[0]==='u';const y1=up?LY('a'):LY('f');return[colX(n)-pad,y1-pad,pad*2,16*4+pad*2]}
+/* ---------- Elements ---------- */
+function terms(e){if(e.kind==='btn')return[`${e.col}e`,`${e.col}f`,`${e.col+2}e`,`${e.col+2}f`];if(e.kind==='pot'||e.kind==='npn')return[0,1,2].map(i=>`${e.col+i}${e.row}`);if(e.kind==='ads')return[...Array(10).keys()].map(i=>`${e.col+i}${e.row}`);return[e.a,e.b]}
+function stepElem(s,i){let e;if(s.t==='wire'){e={kind:'wire',id:s.wid||'W'+i,a:res(s.a),b:res(s.b),color:s.color}}else if(s.t==='part'){e={...s.part}}else return null;
+ const o=S.over[i];if(o)Object.assign(e,o);return e}
+function appliedCount(){return S.built}
+function elements(){const st=L().steps;let es=[],stash=[];const ap=(s,e)=>{if(s.t==='off'){stash=es.filter(x=>s.ids.includes(x.id));es=es.filter(x=>!s.ids.includes(x.id))}else if(s.t==='on'){es=es.concat(stash);stash=[]}else if(e)es.push(e)};(L().preSteps||[]).forEach((s,i)=>{let e=null;if(s.t==='wire')e={kind:'wire',id:s.wid||'P'+i,a:res(s.a),b:res(s.b),color:s.color};else if(s.t==='part')e={...s.part};ap(s,e)});st.slice(0,appliedCount()).forEach((s,i)=>ap(s,stepElem(s,i)));es=es.concat(S.free).filter(e=>!S.removed.has(e.id));
+ if(S.fault){const f=S.fault;if(f.remove)es=es.filter(e=>e.id!==f.remove);if(f.swap)es=es.map(e=>e.id===f.swap?{...e,a:e.b,b:e.a}:e);if(f.short)es=es.map(e=>e.id===f.short?{kind:'wire',id:e.id,a:e.a,b:e.b,color:'#8d6be0'}:e)}
+ return es}
+function running(){if(S.mode==='free'&&S.stopCode)return false;return L().steps.slice(0,appliedCount()).some(s=>s.t==='code')}
+function ldrR(id){const l=S.ctrl[id]===undefined?.7:S.ctrl[id];return Math.pow(10,6-3*l)}
+function potP(id){return S.ctrl[id]===undefined?.8:S.ctrl[id]}
+/* ---------- Solver: nodal analysis with on/off diode states ---------- */
+const VF={red:2,yellow:2.1,green:2.2,blue:3};
+const RW=.01,RS=.05,RG=25,GMIN=1e-9;
+function solveAt(els,level){const parent={};const find=x=>{if(parent[x]===undefined)parent[x]=x;return parent[x]===x?x:(parent[x]=find(parent[x]))};
+ const uni=(a,b)=>{parent[find(a)]=find(b)};find('GND');
+ els.forEach(e=>{if(e.kind==='btn'){uni(`u${e.col}`,`l${e.col}`);uni(`u${e.col+2}`,`l${e.col+2}`)}});
+ const idx={};let N=0;const G0=find('GND');const node=h=>{const r=find(strip(h));if(r===G0)return-1;if(idx[r]===undefined)idx[r]=N++;return idx[r]};
+ const lin=[],diodes=[],npn=[],src=[],links=[];
+ const add=(a,b,g,e)=>{lin.push({a,b,g,e});links.push([a,b])};
+ els.forEach(e=>{const t=terms(e);if(e.kind==='wire')add(node(t[0]),node(t[1]),1/RW,e);
+  else if(e.kind==='r')add(node(t[0]),node(t[1]),1/e.value,e);
+  else if(e.kind==='ldr')add(node(t[0]),node(t[1]),1/ldrR(e.id),e);
+  else if(e.kind==='btn'){const a=node(t[0]),b=node(t[2]);node(t[1]);node(t[3]);if(S.pressed[e.id])add(a,b,1/.05,e)}
+  else if(e.kind==='pot'){const p=potP(e.id),a=node(t[0]),w=node(t[1]),b=node(t[2]);add(a,w,1/Math.max(1,1e4*(1-p)),{id:e.id+':u'});add(w,b,1/Math.max(1,1e4*p),{id:e.id+':l'})}
+  else if(e.kind==='led')diodes.push({a:node(t[0]),b:node(t[1]),vf:VF[e.color]||2,rd:5,on:false,e});
+  else if(e.kind==='ads'){const a=t.map(node);add(a[2],a[0],1e-4,{id:e.id+':scl'});add(a[3],a[0],1e-4,{id:e.id+':sda'})}
+  else if(e.kind==='npn'){const q={c:node(t[0]),b:node(t[1]),e:node(t[2]),be:false,ce:false,el:e};npn.push(q)}});
+ const pins=new Set();els.forEach(e=>terms(e).forEach(h=>{if(h.startsWith('pin:'))pins.add(h)}));
+ if(S.power)pins.forEach(h=>{const p=pinOf(h);if(!p)return;if(p.type==='pwr')src.push({n:node(h),v:p.v||V(),r:RS,pin:p});
+  else if(p.type==='io'){if(S.analog[p.id]!==undefined){src.push({n:node(h),v:S.analog[p.id],r:1,pin:p,io:true});return}const d=S.manual[p.id]!==undefined?S.manual[p.id]:S.drive[p.id];if(d!==undefined&&d!==null){const lv=d>0&&d<1?level:d;src.push({n:node(h),v:lv?V():0,r:RG,pin:p,io:true})}}});
+ const solveLin=()=>{const A=Array.from({length:N},()=>new Float64Array(N+1));
+  const st=(a,b,g)=>{if(a>=0)A[a][a]+=g;if(b>=0)A[b][b]+=g;if(a>=0&&b>=0){A[a][b]-=g;A[b][a]-=g}};
+  const inj=(n,c)=>{if(n>=0)A[n][N]+=c};
+  for(let i=0;i<N;i++)A[i][i]+=GMIN;
+  lin.forEach(l=>st(l.a,l.b,l.g));
+  src.forEach(s=>{st(s.n,-1,1/s.r);inj(s.n,s.v/s.r)});
+  diodes.forEach(d=>{if(d.on){st(d.a,d.b,1/d.rd);inj(d.a,d.vf/d.rd);inj(d.b,-d.vf/d.rd)}});
+  npn.forEach(q=>{if(q.be){st(q.b,q.e,1/50);inj(q.b,.7/50);inj(q.e,-.7/50)}if(q.ce)st(q.c,q.e,1/5)});
+  for(let c=0;c<N;c++){let m=c;for(let r=c+1;r<N;r++)if(Math.abs(A[r][c])>Math.abs(A[m][c]))m=r;[A[c],A[m]]=[A[m],A[c]];const pv=A[c][c]||1e-30;for(let r=0;r<N;r++){if(r===c)continue;const f=A[r][c]/pv;if(f){for(let k=c;k<=N;k++)A[r][k]-=f*A[c][k]}}}
+  const v=new Float64Array(N);for(let i=0;i<N;i++)v[i]=A[i][N]/(A[i][i]||1e-30);return v};
+ let v=N?solveLin():new Float64Array(0);const vv=n=>n<0?0:v[n];
+ for(let it=0;it<40;it++){let ch=false;
+  diodes.forEach(d=>{const u=vv(d.a)-vv(d.b);if(d.on){if(u<d.vf-1e-9){d.on=false;ch=true}}else if(u>d.vf+1e-6){d.on=true;ch=true}});
+  npn.forEach(q=>{const u=vv(q.b)-vv(q.e);if(q.be){if(u<.7-1e-9){q.be=false;q.ce=false;ch=true}}else if(u>.7+1e-6){q.be=true;ch=true}
+   if(q.be){const ib=(u-.7)/50;const on=ib>5e-6;if(on!==q.ce){q.ce=on;ch=true}}});
+  if(!ch)break;v=solveLin()}
+ /* float detection: reachable from a source or ground through something that conducts */
+ const adj=Array.from({length:N+1},()=>[]);const ix=n=>n<0?N:n;const lk=(a,b)=>{adj[ix(a)].push(ix(b));adj[ix(b)].push(ix(a))};
+ links.forEach(([a,b])=>lk(a,b));diodes.forEach(d=>{if(d.on)lk(d.a,d.b)});npn.forEach(q=>{if(q.be)lk(q.b,q.e);if(q.ce)lk(q.c,q.e)});
+ const seen=new Uint8Array(N+1);const q=[];if(S.power){q.push(N);seen[N]=1;src.forEach(s=>{const i=ix(s.n);if(!seen[i]){seen[i]=1;q.push(i)}})}
+ while(q.length){const i=q.pop();adj[i].forEach(j=>{if(!seen[j]){seen[j]=1;q.push(j)}})}
+ const cur={};lin.forEach(l=>{cur[l.e.id]=(vv(l.a)-vv(l.b))*l.g});
+ diodes.forEach(d=>{cur[d.e.id]=d.on?(vv(d.a)-vv(d.b)-d.vf)/d.rd:0;d.u=vv(d.a)-vv(d.b)});
+ npn.forEach(q=>{cur[q.el.id+':ib']=q.be?(vv(q.b)-vv(q.e)-.7)/50:0;cur[q.el.id+':ic']=q.ce?(vv(q.c)-vv(q.e))/5:0});
+ const srcI=src.map(s=>({pin:s.pin,io:s.io,i:(s.v-vv(s.n))/s.r}));
+ return{read:h=>{const r=find(strip(h));if(r===G0)return S.power?0:null;const n=idx[r];if(n===undefined)return null;return seen[n]?v[n]:null},cur,srcI,diodes}}
+let SOL=null;
+function solve(){const els=elements();let pwm=Object.values({...S.drive,...S.manual}).some(d=>d>0&&d<1);
+ const hi=solveAt(els,1);SOL=hi;SOL.bright={};SOL.warn=[];
+ const ledI={};hi.diodes.forEach(d=>{ledI[d.e.id]=hi.cur[d.e.id]});
+ Object.keys(ledI).forEach(id=>{SOL.bright[id]=Math.min(1,Math.sqrt(Math.max(0,ledI[id])/.015))});
+ if(!S.power)return;
+ const ad=els.find(e=>e.kind==='ads');if(ad){const vd=hi.read(terms(ad)[0]);if(vd!==null&&vd>3.7)SOL.warn.push('The ADS1015 is on more than 3.6 V. Its I2C lines can put that voltage on ESP32 pins. Power it from 3V3 only.')}
+ const big=hi.srcI.filter(s=>!s.io&&Math.abs(s.i)>1);if(big.length)SOL.warn.push('Short circuit: the supply connects straight to ground. A real board could overheat or reset. Remove the wire that joins + to −.');
+ hi.srcI.filter(s=>s.io&&Math.abs(s.i)>.03).forEach(s=>SOL.warn.push(`Pin ${s.pin.label} is supplying ${(Math.abs(s.i)*1000).toFixed(0)} mA, which is above a safe GPIO load. Add a resistor.`));
+ Object.keys(ledI).forEach(id=>{if(ledI[id]>.03)SOL.warn.push(`${id} is carrying ${(ledI[id]*1000).toFixed(0)} mA. A real LED would soon burn out. Add a series resistor.`)});
+ hi.diodes.forEach(d=>{if(d.u<-.5)SOL.note=(SOL.note||'')+`${d.e.id} is reversed, so it blocks current. `});
+}
+function gauss(A){const N=A.length;for(let c=0;c<N;c++){let m=c;for(let r=c+1;r<N;r++)if(Math.abs(A[r][c])>Math.abs(A[m][c]))m=r;[A[c],A[m]]=[A[m],A[c]];const pv=A[c][c]||1e-30;for(let r=0;r<N;r++){if(r===c)continue;const f=A[r][c]/pv;if(f)for(let k=c;k<=N;k++)A[r][k]-=f*A[c][k]}}return A.map((row,i)=>row[N]/(row[i]||1e-30))}
+/* Ohmmeter: resistive paths only, with supply off. 2.2 kOhm stands for the ESP32 path between its 3V3 and GND pins, chosen so a 10 k pair reads 5.5 k as measured in TEST_CIRCUITS.pdf. */
+function ohms(ha,hb){const els=elements(),idx={};const n=h=>{const k=sameRoot(strip(h),els);if(idx[k]===undefined)idx[k]=Object.keys(idx).length;return idx[k]};const R=[];const add=(a,b,r)=>R.push([n(a),n(b),r]);
+ const a=n(ha),b=n(hb);els.forEach(e=>{const t=terms(e);if(e.kind==='wire')add(t[0],t[1],.01);else if(e.kind==='r')add(t[0],t[1],e.value);else if(e.kind==='ldr')add(t[0],t[1],ldrR(e.id));else if(e.kind==='pot'){const p=potP(e.id);add(t[0],t[1],Math.max(1,1e4*(1-p)));add(t[1],t[2],Math.max(1,1e4*p))}else if(e.kind==='btn'&&S.pressed[e.id])add(t[0],t[2],.05)});
+ if(S.board==='esp38'||S.board==='esp32')add('pin:3V3','pin:GND',2200);
+ const N=Object.keys(idx).length;const A=Array.from({length:N},()=>new Float64Array(N+1));for(let i=0;i<N;i++)A[i][i]=1e-9;R.forEach(([p,q,r])=>{const g=1/r;A[p][p]+=g;A[q][q]+=g;A[p][q]-=g;A[q][p]-=g});if(a===b)return 0;A[a][N]=1e-3;A[b][N]=-1e-3;const v=gauss(A);return(v[a]-v[b])/1e-3}
+function sameRoot(s,els){const p={};const f=x=>{if(p[x]===undefined)p[x]=x;return p[x]===x?x:(p[x]=f(p[x]))};els.forEach(e=>{if(e.kind==='btn'){p[f('u'+e.col)]=f('l'+e.col);p[f('u'+(e.col+2))]=f('l'+(e.col+2))}});return f(s)}
+function sameNet(x,y){const els=elements(),p={};const f=q=>{if(p[q]===undefined)p[q]=q;return p[q]===q?q:(p[q]=f(p[q]))};els.forEach(e=>{if(e.kind==='wire')p[f(strip(e.a))]=f(strip(e.b))});return f(strip(x))===f(strip(y))}
+function meterRead(){const m=S.meter,pw=S.power;if(!m.red||!m.black)return{d:'---',n:'Place both probes. Tap a probe button, then a hole.'};
+ if(m.mode==='dcv'){const a=SOL.read(m.red),b=SOL.read(m.black);if(a===null||b===null)return pw?{d:'0.08',n:'V. A probe is on a floating net, so this is only a stray reading. Check the wiring to it.'}:{d:'0.00',n:'V. USB power is off.'};return{d:(a-b).toFixed(2),n:'V, red minus black.'}}
+ const r=ohms(m.red,m.black);if(m.mode==='ohm')return r>20000?{d:'1',n:'Over range for 20k, or an open path.'}:{d:(r/1000).toFixed(2),n:'kΩ on the 20k range.'};
+ return r<30?{d:'BEEP',n:'Connected.'}:{d:'1',n:'Not connected. No beep.'}}
+function renderMeter(){const m=S.meter;$('meter').innerHTML=`<strong>Multimeter</strong><div class="seg" role="group" aria-label="Meter range">${[['dcv','DCV 20'],['ohm','20k Ω'],['cont','Continuity']].map(([k,t])=>`<button data-mm="${k}" aria-pressed="${m.mode===k}">${t}</button>`).join('')}</div><button class="btn sm ${m.arm==='red'?'on':''}" data-arm="red">Red probe</button><button class="btn sm ${m.arm==='black'?'on':''}" data-arm="black">Black probe</button><div class="lcd" id="lcd">---</div><small id="lcdn"></small>`;updateMeter()}
+function updateMeter(){if(!SOL||!$('lcd'))return;const r=meterRead();$('lcd').textContent=r.d;$('lcdn').textContent=(S.meter.arm?`Tap a hole for the ${S.meter.arm} probe. `:'')+r.n}
+function drawTrace(){const g=$('trace'),on=!!L().trace&&running();g.hidden=!on;if(!on)return;const y=c=>42-Math.max(-2048,Math.min(2048,c))/2048*36;const pts=S.trace.map((c,i)=>`${(i*300/119).toFixed(1)},${y(c).toFixed(1)}`).join(' ');g.innerHTML=`<line x1="0" x2="300" y1="42" y2="42" stroke="currentColor" stroke-opacity=".3" stroke-width=".6"/><text x="2" y="9" font-size="7" fill="currentColor" font-family="IBM Plex Mono,monospace">+2048</text><text x="2" y="44" font-size="7" fill="currentColor" font-family="IBM Plex Mono,monospace">0</text><text x="2" y="82" font-size="7" fill="currentColor" font-family="IBM Plex Mono,monospace">−2048</text><polyline points="${pts}" fill="none" stroke="#f3a722" stroke-width="1.3"/>`}
+/* ---------- Program runtime ---------- */
+const api={adsInfo(){const e=elements().find(x=>x.kind==='ads');if(!e)return{ok:false};const t=terms(e);const vd=SOL.read(t[0]),gn=SOL.read(t[1]);if(vd===null||vd<2||gn===null||gn>.3)return{ok:false};if(!sameNet(t[2],'pin:IO22')||!sameNet(t[3],'pin:IO21'))return{ok:false};const ad=t[4];const addr=sameNet(ad,'pin:GND')?'0x48':sameNet(ad,'pin:3V3')?'0x49':sameNet(ad,t[3])?'0x4A':sameNet(ad,t[2])?'0x4B':null;if(!addr)return{ok:false};return{ok:true,addr,t}},
+ counts(){const e=elements().find(x=>x.kind==='ads'),t=terms(e);const a=SOL.read(t[6]),b=SOL.read(t[7]);if(a===null||b===null)return Math.round(Math.random()*400-200);return Math.max(-2048,Math.min(2047,(a-b)*1000))},
+ trace(c){S.trace.push(c);if(S.trace.length>120)S.trace.shift()},
+ analog(p,v){S.analog[p]=v;dirty=true},
+ out(role,v){const pin=B().roles[role];if(S.drive[pin]!==v){S.drive[pin]=v;dirty=true}},
+ dread(role,t){const h='pin:'+B().roles[role];const v=SOL.read(h);if(v===null){const k=Math.floor(t/500);if(S.mem.fk!==k){S.mem.fk=k;S.mem.fv=Math.random()<.5?1:0}return S.mem.fv}return v>V()/2?1:0},
+ aread(role){const v=SOL.read('pin:'+B().roles[role]);return v===null?.5:Math.max(0,Math.min(1,v/V()))},
+ once(k,msg){if(S.mem[k]!==msg){S.mem[k]=msg;api.print(msg)}},
+ every(ms,t){const k=Math.floor(t/ms);if(S.mem.ev!==k){S.mem.ev=k;return true}return false},
+ print(m){S.serial.push(m);if(S.serial.length>9)S.serial.shift();serialDirty=true},
+ get adcMax(){return B().adc||1023}};
+let dirty=true,serialDirty=true;
+function tick(){const now=performance.now();const run=running()&&S.power;
+ if(run){if(!S.t0){S.t0=now;S.mem={};S.serial=[];S.trace=[]; serialDirty=true}api_sync(now-S.t0)}
+ else{if(S.t0||Object.keys(S.drive).length){S.t0=0;S.drive={};S.analog={};S.trace=[];S.mem={};dirty=true;S.serial=[];serialDirty=true}}
+ if(dirty){solve();dirty=false;updateDyn()}
+ else if(now-lastDyn>240)updateDyn()}
+let lastDyn=0;
+function api_sync(t){L().prog&&L().prog(api,t)}
+/* ---------- Drawing parts ---------- */
+const BANDS=['#111','#7a4a1e','#d3322a','#ee7d1a','#eccd1b','#23a455','#2b6fd6','#7d3fc9','#888','#eee'];
+function rColors(v){let e=0,x=v;while(x>=100){x/=10;e++}x=Math.round(x);return[BANDS[Math.floor(x/10)],BANDS[x%10],BANDS[e]]}
+const rLabel=v=>v>=1000?(v/1000)+' kΩ':v+' Ω';
+function legs(a,b,c){return`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${c||'#a7adb1'}" stroke-width="2"/>`}
+function drawPart(e){const d=`data-el="${e.id}"`;
+ if(e.kind==='r'||e.kind==='ldr'){const a=XY(e.a),b=XY(e.b),mx=(a.x+b.x)/2,my=(a.y+b.y)/2,ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;let g=legs(a,b)+`<circle cx="${a.x}" cy="${a.y}" r="2.5" fill="#70767a"/><circle cx="${b.x}" cy="${b.y}" r="2.5" fill="#70767a"/>`;
+  if(e.kind==='r'){const c=rColors(e.value);g+=`<g transform="translate(${mx} ${my}) rotate(${ang})"><rect x="-15" y="-5.5" width="30" height="11" rx="4.5" fill="#d9b98b" stroke="#997a4f" stroke-width=".7"/><rect x="-10" y="-5.3" width="3" height="10.6" fill="${c[0]}"/><rect x="-4.5" y="-5.3" width="3" height="10.6" fill="${c[1]}"/><rect x="1" y="-5.3" width="3" height="10.6" fill="${c[2]}"/><rect x="8" y="-5.3" width="2" height="10.6" fill="#b8912f"/></g><text x="${mx}" y="${my-9}" font-size="9" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#20282a" font-weight="500">${rLabel(e.value)}</text>`}
+  else g+=`<g transform="translate(${mx} ${my})"><circle r="9" fill="#d98c3d" stroke="#8c5a21"/><path d="M-5 -3h9v2h-8v2h8v2h-9" fill="none" stroke="#692f12" stroke-width="1.1"/></g><text x="${mx}" y="${my-12}" font-size="9" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#20282a" font-weight="500">LDR</text>`;
+  return`<g ${d}>${g}</g>`}
+ if(e.kind==='led'){const a=XY(e.a),b=XY(e.b),mx=(a.x+b.x)/2,my=Math.min(a.y,b.y)-12;const col={red:'#e3372b',yellow:'#f2c318',green:'#2ec766',blue:'#3f84f2'}[e.color]||'#e3372b';
+  return`<g ${d}><line x1="${a.x}" y1="${a.y}" x2="${mx-2}" y2="${my}" stroke="#a7adb1" stroke-width="2.4"/><line x1="${b.x}" y1="${b.y}" x2="${mx+2}" y2="${my}" stroke="#a7adb1" stroke-width="1.4"/><circle cx="${a.x}" cy="${a.y}" r="2.5" fill="#70767a"/><circle cx="${b.x}" cy="${b.y}" r="2.5" fill="#70767a"/><circle class="glow" data-led="${e.id}" cx="${mx}" cy="${my}" r="24" fill="${col}" opacity="0" style="pointer-events:none"/><circle cx="${mx}" cy="${my}" r="8.5" fill="${col}" fill-opacity=".45" stroke="#0005"/><circle class="core" data-led="${e.id}" cx="${mx}" cy="${my}" r="8.5" fill="${col}" opacity="0"/><text x="${mx}" y="${my-11}" font-size="9" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#20282a" font-weight="500">${e.id}</text><text x="${a.x-5}" y="${a.y-3}" font-size="9" text-anchor="end" fill="#b3261e" font-weight="700">+</text></g>`}
+ if(e.kind==='btn'){const x=colX(e.col),y1=LY('e'),y2=LY('f');return`<g ${d} class="clickable" data-btn="${e.id}"><rect x="${x-4}" y="${y1-4}" width="${2*PITCH+8}" height="${y2-y1+8}" rx="2" fill="#2c2f33"/><circle class="cap" data-btnc="${e.id}" cx="${x+PITCH}" cy="${(y1+y2)/2}" r="11" fill="#c33a32" stroke="#0007"/><text x="${x+PITCH}" y="${(y1+y2)/2+3.5}" font-size="9" fill="#fff" text-anchor="middle" font-family="IBM Plex Mono,monospace" style="pointer-events:none">${e.id}</text></g>`}
+ if(e.kind==='pot'){const a=XY(e.col+e.row),y=a.y,mx=a.x+PITCH;const ang=-135+270*potP(e.id);return`<g ${d}><rect x="${a.x-7}" y="${y-26}" width="${2*PITCH+14}" height="30" rx="2" fill="#1f62a8" stroke="#123f70"/><circle cx="${mx}" cy="${y-11}" r="9" fill="#e9ebea"/><line class="dial" data-pot="${e.id}" x1="${mx}" y1="${y-11}" x2="${mx}" y2="${y-19}" stroke="#222" stroke-width="2" transform="rotate(${ang} ${mx} ${y-11})"/>${[0,1,2].map(i=>`<circle cx="${a.x+i*PITCH}" cy="${y}" r="2.5" fill="#d9d9d9"/>`).join('')}<text x="${mx}" y="${y-29}" font-size="9" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#20282a" font-weight="500">10 kΩ</text></g>`}
+ if(e.kind==='ads'){const a=XY(e.col+e.row),y=a.y,N=['VDD','GND','SCL','SDA','ADDR','ALRT','A0','A1','A2','A3'];return`<g ${d}><rect x="${a.x-9}" y="${y-6}" width="${9*PITCH+18}" height="60" rx="3" fill="#123e7a" stroke="#0b2750"/><rect x="${a.x+50}" y="${y+39}" width="42" height="13" fill="#16191c"/><text x="${a.x+71}" y="${y+48.5}" font-size="8" fill="#eee" text-anchor="middle" font-family="IBM Plex Mono,monospace">ADS1015</text>${N.map((n,i)=>`<circle cx="${a.x+i*PITCH}" cy="${y}" r="2.8" fill="#d9c177"/><text x="${a.x+i*PITCH+3}" y="${y+7}" font-size="7.5" fill="#fff" text-anchor="end" transform="rotate(-90 ${a.x+i*PITCH+3} ${y+7})" font-family="IBM Plex Mono,monospace" dx="-6">${n}</text>`).join('')}</g>`}
+ if(e.kind==='npn'){const a=XY(e.col+e.row),y=a.y;return`<g ${d}><path d="M${a.x-8} ${y-6}h${2*PITCH+16}v-10q-${PITCH+8} -14 -${2*PITCH+16} 0z" fill="#1f2226"/><text x="${a.x+PITCH}" y="${y-8.5}" font-size="8" fill="#eee" text-anchor="middle" font-family="IBM Plex Mono,monospace">${e.id}</text>${['C','B','E'].map((c,i)=>`<circle cx="${a.x+i*PITCH}" cy="${y}" r="2.5" fill="#a7adb1"/><text x="${a.x+i*PITCH}" y="${y+11}" font-size="8" font-weight="600" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#20282a">${c}</text>`).join('')}</g>`}
+ return''}
+function wirePath(a,b){if(a.isPin||b.isPin){const f=a.isPin?a:b;const dir=(f===a?1:-1);const[p,q]=a.isPin?[a,b]:[a,b];const cx1=p.x+(p.isPin?70:0),cx2=q.x+(q.isPin?70:0);return`M${p.x} ${p.y}C${cx1} ${p.y+(p.isPin?0:-40)} ${cx2} ${q.y+(q.isPin?0:-40)} ${q.x} ${q.y}`}
+ const dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy);const lift=Math.min(16,6+dist*.16);const nx=dist?-dy/dist:0,ny=dist?dx/dist:0;const s=ny>0?-1:1;const mx=(a.x+b.x)/2+nx*lift*s,my=(a.y+b.y)/2+ny*lift*s;return`M${a.x} ${a.y}Q${mx} ${my} ${b.x} ${b.y}`}
+function drawWire(e){const a={...XY(e.a),isPin:e.a.startsWith('pin:')},b={...XY(e.b),isPin:e.b.startsWith('pin:')};const d=wirePath(a,b);
+ return`<g data-el="${e.id}"><path class="wirehalo" d="${d}"/><path class="wire" d="${d}" stroke="${e.color||'#2b6fd6'}"/><path class="flow" data-flow="${e.id}" d="${d}"/><circle cx="${a.x}" cy="${a.y}" r="3" fill="${e.color||'#2b6fd6'}"/><circle cx="${b.x}" cy="${b.y}" r="3" fill="${e.color||'#2b6fd6'}"/></g>`}
+/* ---------- Full stage render ---------- */
+function holesSVG(){let s='';const n=cols();const hole=(h,x,y)=>`<rect class="hole" x="${x-2.3}" y="${y-2.3}" width="4.6" height="4.6"/><rect class="hit" data-h="${h}" x="${x-7}" y="${y-7}" width="14" height="14"/>`;
+ for(let c=1;c<=n;c++){const x=colX(c);if(c%6!==0)Object.keys(RY).forEach(r=>{s+=hole(`${r}:${c}`,x,RY[r])});for(const l of LETTERS)s+=hole(c+l,x,LY(l));
+  if(c===1||c%5===0){s+=`<text x="${x}" y="84" font-size="8.5" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#5a615e">${c}</text><text x="${x}" y="284" font-size="8.5" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#5a615e">${c}</text>`}}
+ for(const l of LETTERS)s+=`<text x="${colX(1)-13}" y="${LY(l)+3}" font-size="9" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#5a615e">${l}</text>`;
+ return s}
+function bbSVG(){const w=bbW(),x=X0;const rail=(y,c)=>`<line x1="${x+12}" x2="${x+w-12}" y1="${y}" y2="${y}" stroke="${c}" stroke-width="1.6"/>`;
+ return`<rect x="${x}" y="24" width="${w}" height="306" rx="6" fill="#efefe8" stroke="#bfbfb6"/>${rail(36,'#d3322a')}${rail(72,'#2b5fc7')}${rail(288,'#d3322a')}${rail(324,'#2b5fc7')}<text x="${x+6}" y="49" font-size="11" font-weight="700" fill="#d3322a">+</text><text x="${x+6}" y="65" font-size="11" font-weight="700" fill="#2b5fc7">−</text><text x="${x+6}" y="301" font-size="11" font-weight="700" fill="#d3322a">+</text><text x="${x+6}" y="317" font-size="11" font-weight="700" fill="#2b5fc7">−</text><rect x="${x}" y="176" width="${w}" height="14" fill="#d9d9d0"/>${S.bb==='split'?`<rect x="${colX(30)-5}" y="30" width="10" height="48" fill="#efefe8"/><rect x="${colX(30)-5}" y="282" width="10" height="48" fill="#efefe8"/><text x="${colX(30)}" y="27" font-size="8" text-anchor="middle" font-family="IBM Plex Mono,monospace" fill="#5a615e" dy="4">break</text>`:''}`}
+function stripsSVG(){if(!S.strips&&!S.under)return'';let s='';for(const r of [...Object.keys(RY),...(S.bb==='split'?Object.keys(RY).map(k=>k+'R'):[])]){const q=stripRect(r);s+=`<rect class="stripbar" x="${q[0]}" y="${q[1]}" width="${q[2]}" height="${q[3]}" rx="3"/>`}
+ for(let c=1;c<=cols();c++)for(const p of'ul'){const q=stripRect(p+c);s+=`<rect class="stripbar" x="${q[0]+1}" y="${q[1]}" width="${q[2]-2}" height="${q[3]}" rx="3"/>`}return s}
+function curStep(){const st=L().steps;if(S.mode==='do'){return S.phase==='place'?st[S.built]:st[S.built-1]}return S.mode==='free'?null:st[S.built-1]}
+function hlSVG(){const st=curStep();let list=[];if(st&&st.hl&&S.mode!=='free')list=st.hl;let s=list.map(h=>{const q=stripRect(h);return q?`<rect class="hlbar pulse" x="${q[0]}" y="${q[1]}" width="${q[2]}" height="${q[3]}" rx="3"/>`:''}).join('');
+ if(S.mode==='do'&&S.phase==='place'&&st&&S.hint){targetStrips(st).forEach(h=>{const q=stripRect(strip(h));if(q)s+=`<rect class="hlbar pulse" x="${q[0]}" y="${q[1]}" width="${q[2]}" height="${q[3]}" rx="3"/>`})}
+ return s}
+function targetStrips(st){if(st.t==='wire')return[res(st.a),res(st.b)];if(st.t==='part'){const e={...st.part};return terms(e)}return[]}
+function render(){const w=X0+bbW()+12;const svg=$('svg');svg.setAttribute('viewBox',`0 0 ${w} 350`);svg.classList.toggle('full',S.bb!=='half');
+ const board=boardSVG();const es=elements();const parts=es.filter(e=>e.kind!=='wire');const wires=es.filter(e=>e.kind==='wire');
+ svg.innerHTML=bbSVG()+stripsSVG()+holesSVG()+board+`<g id="hl">${hlSVG()}</g><g id="hover"></g>`+wires.map(drawWire).join('')+parts.map(drawPart).join('')+`<g id="tags"></g><g id="picks"></g>`;
+ svg.classList.toggle('under',!!S.under);renderPicks();dirty=true;applyView()}
+function renderPicks(){const g=$('picks');if(!g)return;const mk=(h,c)=>{if(!h)return'';const p=XY(h);return`<circle cx="${p.x}" cy="${p.y}" r="5" fill="${c}" stroke="#fff" stroke-width="1.3" style="pointer-events:none"/>`};g.innerHTML=mk(S.meter.red,'#d3322a')+mk(S.meter.black,'#111')+S.picks.map(h=>{const p=XY(h);return`<circle class="pulse" cx="${p.x}" cy="${p.y}" r="7" fill="none" stroke="#b3261e" stroke-width="2.4"/>`}).join('')}
+/* ---------- View rotation ---------- */
+const VIEW={x:0,y:0,z:0};
+const wrap180=a=>((a+180)%360+360)%360-180;
+function applyView(){const box=document.querySelector('.scroll'),g=$('svg');const{x,y,z}=VIEW;
+ if(!x&&!y&&!z){box.classList.remove('rot');box.style.height='';g.style.transform='';g.style.width='';g.style.height='';return}
+ box.classList.add('rot');const W=box.clientWidth,vb=g.viewBox.baseVal,w=W,h=W*vb.height/vb.width;
+ const r=d=>d*Math.PI/180,cx=Math.cos(r(x)),sx=Math.sin(r(x)),cy=Math.cos(r(y)),sy=Math.sin(r(y)),cz=Math.cos(r(z)),sz=Math.sin(r(z));
+ let mx=0,my=0;for(const[a,b]of[[w/2,h/2],[w/2,-h/2]]){const p=a*cz-b*sz,q=a*sz+b*cz;const X=p*cy,Z=-p*sy,Y=q*cx-Z*sx;mx=Math.max(mx,Math.abs(X));my=Math.max(my,Math.abs(Y))}
+ const s=Math.min(1,(W/2-10)/(mx*1.12||1));g.style.width=w+'px';g.style.height=h+'px';box.style.height=Math.max(240,Math.round(my*2*s*1.14+24))+'px';
+ g.style.transform=`translate(-50%,-50%) perspective(1800px) rotateX(${x}deg) rotateY(${y}deg) rotateZ(${z}deg) scale(${s.toFixed(3)})`}
+function setView(n){Object.assign(VIEW,n);VIEW.x=wrap180(VIEW.x);VIEW.y=wrap180(VIEW.y);VIEW.z=wrap180(VIEW.z);$('vx').value=VIEW.x;$('vy').value=VIEW.y;$('vz').value=VIEW.z;
+ const un=Math.cos(VIEW.x*Math.PI/180)*Math.cos(VIEW.y*Math.PI/180)<0;$('viewnote').hidden=!un;if(un!==!!S.under){S.under=un;render();updateDyn()}else applyView()}
+/* ---------- Check evaluation ---------- */
+const fv=v=>v===null?'floating':v.toFixed(2)+' V';
+function expV(c){if(c.v==='VCC')return V();if(typeof c.v==='function')return c.v(V());return c.v}
+function evalCheck(c){const now=performance.now();
+ if(c.fn)return c.fn();
+ if(c.ohm){const q=ohms(c.ohm[0],c.ohm[1]);return{exp:'about '+(c.v/1000).toFixed(1)+' kΩ',got:q>20000?'open':(q/1000).toFixed(2)+' kΩ',ok:Math.abs(q-c.v)<=c.tol}}
+ if(c.at!==undefined){const h=res(c.at),val=SOL?SOL.read(h):null;if(c.v==='float')return{exp:'floating',got:fv(val),ok:val===null};const e=expV(c),tol=c.tol||Math.max(.12,e*.05);return{exp:e.toFixed(2)+' V',got:fv(val),ok:val!==null&&Math.abs(val-e)<=tol}}
+ if(c.cur){const i=SOL?(SOL.cur[c.cur]||0):0;return{exp:(c.v*1000).toFixed(1)+' mA',got:(Math.abs(i)*1000).toFixed(1)+' mA',ok:Math.abs(i-c.v)<2e-4}}
+ if(c.led){const i=SOL?(SOL.cur[c.led]||0):0;const on=i>1e-4;const sn=S.seen[c.led]||(S.seen[c.led]={});if(on)sn.on=now;else sn.off=now;
+  if(c.on==='blink'){const both=sn.on&&sn.off&&now-sn.on<7000&&now-sn.off<7000;return{exp:'blinking',got:(on?(i*1000).toFixed(1)+' mA, on':'off'),ok:both?true:null}}
+  return{exp:c.on?'on':'off',got:on?`on, ${(i*1000).toFixed(1)} mA`:'off',ok:on===c.on}}
+ if(c.serial)return{exp:'prints text',got:S.serial.length?'printing':'silent',ok:S.serial.length?true:null};
+ return{exp:'',got:'',ok:true}}
+/* ---------- Dynamic update ---------- */
+function updateDyn(){lastDyn=performance.now();if(!SOL)return;updateMeter();drawTrace();const svg=$('svg');
+ svg.querySelectorAll('[data-led]').forEach(n=>{const b=SOL.bright[n.dataset.led]||0;n.setAttribute('opacity',n.classList.contains('glow')?(b*.42).toFixed(2):(b*.95).toFixed(2))});
+ svg.querySelectorAll('[data-flow]').forEach(n=>{const i=SOL.cur[n.dataset.flow]||0;n.classList.toggle('f',i>2e-5);n.classList.toggle('r',i<-2e-5)});
+ svg.querySelectorAll('[data-btnc]').forEach(n=>n.setAttribute('fill',S.pressed[n.dataset.btnc]?'#ffb02e':'#c33a32'));
+ svg.querySelectorAll('[data-pot]').forEach(n=>{const x=n.getAttribute('x1'),y=n.getAttribute('y1');n.setAttribute('transform',`rotate(${-135+270*potP(n.dataset.pot)} ${x} ${y})`)});
+ const st=curStep();const showRes=st&&(S.mode==='watch'||(S.mode==='do'&&S.phase==='result'));
+ const tags=$('tags');if(tags){let t='';if(showRes&&st.checks)st.checks.forEach(c=>{if(c.at===undefined)return;const p=XY(res(c.at));const val=SOL.read(res(c.at));const txt=val===null?'float':val.toFixed(2)+' V';const up=p.y<115;const y=up?p.y-22:p.y+9;t+=`<g style="pointer-events:none"><rect x="${p.x-22}" y="${y}" width="44" height="14" rx="2" fill="#172524"/><text x="${p.x}" y="${y+10.5}" font-size="9.5" text-anchor="middle" fill="#ffd27a" font-family="IBM Plex Mono,monospace">${txt}</text></g>`});tags.innerHTML=t}
+ if(showRes&&st.checks)st.checks.forEach((c,i)=>{const r=evalCheck(c);const g=$('got'+i),m=$('ok'+i);if(g)g.textContent=r.got;if(m){m.textContent=r.ok===null?'watching':r.ok?'match':'differs';m.className=r.ok===null?'wait':r.ok?'pass':'fail'}});
+ const wbox=$('warn');if(wbox){const w=[...(SOL.warn||[])];wbox.hidden=!w.length;wbox.textContent=w.join(' ')}
+ const ser=$('serial');if(serialDirty){ser.textContent=S.serial.length?S.serial.join('\n'):(L().mcu?(running()?'waiting for output…':'Nothing yet. Output appears after the upload step.'):'This circuit has no code.');ser.scrollTop=1e5;serialDirty=false}
+ updateProbe()}
+function describe(h){if(h.startsWith('pin:')){const p=pinOf(h);return p?`Pin ${p.label}`:h}if(h.includes(':')){const[r,c]=h.split(':');return`${r==='t+'||r==='t-'?'Top':'Bottom'} ${r.endsWith('+')?'+':'−'} rail, hole ${c}`}return`Hole ${h}`}
+function descStrip(h){if(h.startsWith('pin:')){const p=pinOf(h);return p&&p.type==='gnd'?'All ground pins are one net':p&&p.type==='nc'?'Not used by this simulator':'One header pin'}if(h.includes(':'))return'The whole rail is one conductor';const m=h.match(/^(\d+)([a-j])$/);return LETTERS.indexOf(m[2])<5?`Metal group ${m[1]}a to ${m[1]}e`:`Metal group ${m[1]}f to ${m[1]}j`}
+function updateProbe(){const h=S.hover||S.probe;const box=$('probe');if(!h){box.textContent='Point at or tap any hole to see what it connects to and what voltage it reads.';return}const v=SOL?SOL.read(h):null;
+ box.innerHTML=`<strong>${describe(h)}</strong><span>${descStrip(h)}</span><span class="v">${v===null?'floating (no complete connection)':v.toFixed(2)+' V'}</span>`}
+function setHover(h){S.hover=h;const g=$('hover');if(!g)return;let t='';if(h){const q=stripRect(strip(h));if(q)t=`<rect class="hlbar" x="${q[0]}" y="${q[1]}" width="${q[2]}" height="${q[3]}" rx="3"/>`}g.innerHTML=t;updateProbe()}
+/* ---------- Sheet ---------- */
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function checksHTML(st){if(!st.checks||!st.checks.length)return'';return`<table class="ck"><thead><tr><th>Measure</th><th>Expected</th><th>Simulated</th><th></th></tr></thead><tbody>${st.checks.map((c,i)=>{const r=evalCheck(c);return`<tr><td>${esc(c.label)}</td><td class="n">${r.exp}</td><td class="n" id="got${i}">${r.got}</td><td id="ok${i}">…</td></tr>`}).join('')}</tbody></table>`}
+function controlsHTML(){const es=elements();let h='';es.forEach(e=>{
+  if(e.kind==='pot')h+=`<label for="c_${e.id}"><span>Knob ${e.id}</span><span id="cv_${e.id}">${Math.round(potP(e.id)*100)}%</span><input id="c_${e.id}" data-ctl="${e.id}" type="range" min="0" max="100" value="${Math.round(potP(e.id)*100)}"></label>`;
+  if(e.kind==='ldr'){const l=S.ctrl[e.id]===undefined?.7:S.ctrl[e.id];h+=`<label for="c_${e.id}"><span>Room light</span><span id="cv_${e.id}">${Math.round(l*100)}%</span><input id="c_${e.id}" data-ctl="${e.id}" type="range" min="0" max="100" value="${Math.round(l*100)}"></label>`}
+  if(e.kind==='btn')h+=`<div><button class="btn sm" data-press="${e.id}">Press and hold ${e.id}</button></div>`});
+ if(L().boot&&running())h+=`<div><button class="btn sm" data-press="BOOT">Hold BOOT (GPIO0)</button></div>`;
+ return h?`<div class="ctrl"><div class="sec">Try it</div>${h}</div>`:''}
+function faultsHTML(){const l=L();if(!l.faults||S.mode!=='watch'||S.built<l.steps.length)return'';return`<div class="ctrl"><div class="sec">What if…</div><div class="nav">${l.faults.map((f,i)=>`<button class="btn sm ${S.faultIdx===i?'on':''}" data-fault="${i}">${esc(f.label)}</button>`).join('')}${S.fault?'<button class="btn sm" data-fault="-1">Restore</button>':''}</div>${S.fault?`<p class="free-note">${esc(l.faults[S.faultIdx].say)}</p>`:''}</div>`}
+function renderSheet(){const sh=$('sheet'),st=curStep(),l=L(),n=l.steps.length;let h='';
+ if(S.mode==='free'){h=`<div><div class="eyebrow">Free build</div><h2>Build your own circuit</h2></div><p class="why">Choose a part, then click holes to place it. The circuit solves live. Your board starts with the work from "${esc(l.name)}".</p>
+ <div class="ctrl"><div class="sec">Tool</div><div class="nav" id="toolbar">${[['wire','Wire'],['r','Resistor'],['led','LED'],['btn','Button'],['pot','Knob'],['del','Delete']].map(([k,t])=>`<button class="btn sm ${S.tool===k?'on':''}" data-tool="${k}">${t}</button>`).join('')}</div>
+ ${S.tool==='r'?`<label class="f" for="rv">Value<select id="rv">${[100,220,330,1000,4700,10000].map(v=>`<option value="${v}" ${S.rval===v?'selected':''}>${rLabel(v)}</option>`).join('')}</select></label>`:''}
+ ${S.tool==='led'?`<label class="f" for="lc">Colour<select id="lc">${['red','yellow','green','blue'].map(v=>`<option ${S.ledc===v?'selected':''}>${v}</option>`).join('')}</select></label>`:''}
+ <p class="free-note" id="toolhelp">${{wire:'Click the two ends of the wire. Board pins work too.',r:'Click the two holes for the legs.',led:'Click the long leg (anode) hole, then the short leg hole.',btn:'Click a column near the centre gap. The button straddles the gap.',pot:'Click the hole for the left leg. The legs use three neighbouring columns.',del:'Click a wire or part to remove it.'}[S.tool]}</p></div>
+ ${S.msg?`<div class="feedback ${S.msg.bad?'bad':''}">${esc(S.msg.t)}</div>`:''}
+ <div class="warn" id="warn" hidden></div>${gpioHTML()}${controlsHTML()}
+ <div class="nav"><button class="btn" id="undo">Undo last</button><button class="btn" id="clear">Clear the board</button></div>`}
+ else if(S.mode==='do'&&S.phase==='place'&&!st){h=`<div><div class="eyebrow">All ${n} steps wired</div><h2>Circuit complete</h2></div><p class="why">You placed every connection and each measurement was checked. Mistakes: ${S.misses||0}.</p><div class="warn" id="warn" hidden></div>${controlsHTML()}<div class="nav"><button class="btn pri" id="again">Wire it again</button><button class="btn" data-go="free">Keep building freely</button></div>`}
+ else if(S.mode==='do'&&S.phase==='place'){const idx=S.built;h=`<div><div class="eyebrow">Your move: step ${idx+1} of ${n}</div><h2>${esc(st.title)}</h2></div><p class="do">${esc(fmt(st.do))}</p><p class="why">${esc(fmt(st.why))}</p>
+ ${st.t!=='wire'&&st.t!=='part'?`<button class="btn pri" id="doact">${st.t==='code'?'Upload or run this':'Done, show the result'}</button>`:`<p class="bench-note">${stepHint(st)}</p>`}
+ ${S.msg?`<div class="feedback ${S.msg.bad?'bad':''}">${esc(S.msg.t)}</div>`:''}<div class="warn" id="warn" hidden></div>${controlsHTML()}
+ <div class="nav"><button class="btn sm" id="hint">${S.hint?'Hide hint':'Show me where'}</button><button class="btn sm" id="skip">Do this step for me</button></div>`}
+ else{const idx=S.built-1;const isDo=S.mode==='do';h=`<div><div class="eyebrow">${isDo?'Correct. ':''}Step ${idx+1} of ${n}</div><h2>${esc(st.title)}</h2></div><p class="do">${esc(fmt(st.do))}</p><p class="why">${esc(fmt(st.why))}</p>
+ <div class="expect"><h3>Expected output</h3><p>${esc(fmt(st.expect))}</p>${checksHTML(st)}</div><div class="warn" id="warn" hidden></div>${controlsHTML()}${faultsHTML()}
+ <p class="mistake"><b>Common mistake:</b> ${esc(fmt(st.mistake))}</p>
+ ${isDo?`<div class="nav"><button class="btn pri" id="cont">${S.built>=n?'Finish':'Next connection'}</button></div>`:`<div class="nav"><button class="btn" id="back" ${idx===0?'disabled':''}>Back</button><button class="btn pri" id="next" ${idx>=n-1?'disabled':''}>Next step</button><button class="btn" id="auto">${S.auto?'Pause':'Auto-play'}</button></div>`}`}
+ if(l.force)h+=`<p class="bench-note"><b>Bench test on USB power.</b> No electrodes on your body. Power the ADS1015 from 3V3 only, never 5V or VIN. The simulator models what your code should do. It does not compile or run it.</p>`;
+ if(S.mode!=='free')h+=`<p class="bench-note">The simulator stays powered so you can see readings at each step. On a real board, unplug USB before moving wires, then plug it back in to measure.</p>`;
+ sh.innerHTML=h;
+ const pre=$('code');const c=l.text||(l.code&&B().lang?l.code[B().lang](B().num,B().adc):null);$('codeTitle').textContent=l.text?'Your files and commands':c?(B().lang==='py'?'MicroPython for ':'Arduino code for ')+B().name:'Code';pre.textContent=c||(l.mcu?'':'This circuit needs no code. Power alone makes it work.');$('copy').hidden=!c;serialDirty=true}
+function gpioHTML(){const es=elements(),pins=new Set();es.forEach(e=>terms(e).forEach(h=>{if(h.startsWith('pin:')){const p=pinOf(h);if(p&&p.type==='io')pins.add(p)}}));if(!pins.size)return'';
+ return`<div class="ctrl"><div class="sec">Drive a pin</div>${[...pins].map(p=>{const m=S.manual[p.id];return`<div class="nav" style="align-items:center"><span style="font:13px var(--mono);min-width:50px">${p.label}</span><div class="seg">${[['Input',undefined],['LOW',0],['HIGH',1]].map(([t,v])=>`<button data-pin="${p.id}" data-pv="${v===undefined?'':v}" aria-pressed="${m===v}">${t}</button>`).join('')}</div></div>`}).join('')}</div>`}
+function stepHint(st){if(st.t==='wire')return'Click one end of the wire, then the other. Any hole in the correct group works, just as on a real board.';if(st.part.kind==='led')return'Click the hole for the long leg first, then the short leg.';if(['btn','pot','npn','ads'].includes(st.part.kind))return'Click any hole in the first column of this part.';return'Click the hole for one leg, then the other.'}
+function renderTimeline(){const t=$('timeline'),l=L(),cur=S.mode==='do'?(S.phase==='place'?S.built:S.built-1):S.built-1;t.hidden=S.mode==='free';if(S.mode==='free')return;
+ t.innerHTML=l.steps.map((s,i)=>`<button data-step="${i}" class="${i===cur?'cur':''} ${i<S.built&&i!==cur?'done':''}" title="${esc(s.title)}"><b>${i+1}</b><span class="t">${esc(s.title)}</span></button>`).join('');
+ const b=t.querySelector('.cur');if(b&&t.scrollWidth>t.clientWidth)t.scrollLeft=b.offsetLeft-t.offsetLeft-40}
+function refresh(){S.seen={};render();renderSheet();renderTimeline();syncHold();solve();dirty=false;updateDyn();
+ document.querySelectorAll('#modes button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===S.mode))}
+function syncHold(){if(S.heldByStep){delete S.pressed[S.heldByStep];S.heldByStep=null}const st=curStep();const on=st&&(S.mode==='watch'||S.phase==='result');if(on&&st.hold){S.pressed[st.hold]=true;S.heldByStep=st.hold}if(on&&st.ctrl)Object.assign(S.ctrl,st.ctrl);if(on&&st.meter)S.meter={...S.meter,...st.meter,arm:null,red:st.meter.red,black:st.meter.black};if(S.lastLesson!==S.lesson){S.lastLesson=S.lesson}renderSheet();renderMeter();renderPicks()}
+/* ---------- Actions ---------- */
+function resetLesson(built){S.trace=[];S.analog={};S.over={};S.free=[];S.removed=new Set();S.fault=null;S.faultIdx=null;S.manual={};S.drive={};S.picks=[];S.msg=null;S.hint=false;S.misses=0;S.t0=0;S.serial=[];S.mem={};S.ctrl={};S.pressed={};S.heldByStep=null;S.built=built;S.phase='place';S.stopCode=false;stopAuto()}
+function goto(i){const n=L().steps.length;if(S.mode!=='watch'){return}S.built=Math.max(1,Math.min(n,i));S.fault=null;S.faultIdx=null;refresh()}
+function stopAuto(){if(S.auto){clearInterval(S.auto);S.auto=null}}
+function setMode(m){stopAuto();const prev=S.mode;S.mode=m;S.picks=[];S.msg=null;S.fault=null;S.faultIdx=null;
+ if(m==='do'){resetLesson(0);S.mode='do'}
+ if(m==='watch'){S.stopCode=false;S.free=[];S.removed=new Set();S.manual={};S.over={};if(S.built<1)S.built=1;S.phase='place'}
+ if(m==='free'&&prev==='do'&&S.phase==='place'){/* keep what was placed */}
+ refresh()}
+function pickWrong(t){S.misses=(S.misses||0)+1;S.msg={t,bad:true};S.picks=[];renderSheet();renderPicks();solve();updateDyn()}
+function occupied(h){if(h.startsWith('pin:'))return false;return elements().some(e=>terms(e).includes(h))}
+function clickHole(h){S.probe=h;updateProbe();
+ if(S.meter.arm){S.meter[S.meter.arm]=h;S.meter.arm=S.meter.arm==='red'&&!S.meter.black?'black':null;renderMeter();renderPicks();return}
+ if(S.mode==='watch')return;
+ if(S.mode==='do'){if(S.phase!=='place')return;const st=L().steps[S.built];if(!st||(st.t!=='wire'&&st.t!=='part'))return;return doPick(st,h)}
+ freePick(h)}
+function doPick(st,h){if(st.t==='part'&&['btn','pot','npn','ads'].includes(st.part.kind)){const c=st.part.col,m=h.match(/^(\d+)[a-j]$/);if(!m||+m[1]!==c)return pickWrong(`${describe(h)} is the wrong spot. This part starts at column ${c}.`);return place(null)}
+ if(!S.picks.length&&occupied(h))return pickWrong(`${describe(h)} already holds another leg or wire. Use a free hole in the same group.`);
+ if(!S.picks.length){const tg=targetStrips(st);const ok=st.t==='part'&&st.part.kind==='led'?strip(h)===strip(tg[0]):tg.some(x=>strip(x)===strip(h));
+  if(!ok){const want=(st.t==='part'&&st.part.kind==='led')?'the long leg group: '+describe(tg[0]):tg.map(x=>x.includes(':')&&!x.startsWith('pin:')?'the '+(x[0]==='t'?'top ':'bottom ')+(x[1]==='+'?'+':'−')+' rail':describe(x)).join(' or ');return pickWrong(`${describe(h)} is not connected to this step's target. ${descStrip(h)}. Try ${want}.`)}
+  S.picks=[h];S.msg={t:`First end is in ${describe(h)}. Now choose the other end.`};renderSheet();renderPicks();return}
+ const first=S.picks[0];const tg=targetStrips(st);const a=strip(first),b=strip(h);const want=tg.map(strip);
+ if(h===first)return pickWrong('Pick a different hole for the second end.');
+ if(occupied(h))return pickWrong(`${describe(h)} already holds another leg or wire. Use a free hole in the same group.`);
+ const ok=(a===want[0]&&b===want[1])||(st.part?.kind!=='led'&&a===want[1]&&b===want[0]);
+ if(a===b)return pickWrong(`Both ends are in the same metal group, so this part would be bypassed. ${descStrip(h)}.`);
+ if(!ok)return pickWrong(`${describe(h)} is not the right destination. ${descStrip(h)}. This end belongs in ${describe(want[0]===a?tg[1]:tg[0])}.`);
+ place({a:first,b:h})}
+function place(o){const i=S.built;if(o)S.over[i]=o;S.picks=[];S.msg=null;S.hint=false;S.built=i+1;S.phase='result';refresh()}
+function freePick(h){const t=S.tool;if(t==='del')return;
+ if(t==='btn'){const m=h.match(/^(\d+)[a-j]$/);if(!m||+m[1]+2>cols())return flash('Click a column in the main area, at least 2 from the right end.');const c=+m[1];const legs=[`${c}e`,`${c}f`,`${c+2}e`,`${c+2}f`];if(legs.some(occupied))return flash('Those holes are already in use.');return addFree({kind:'btn',id:'S'+nextId(),col:c})}
+ if(t==='pot'){const m=h.match(/^(\d+)([a-j])$/);if(!m||+m[1]+2>cols())return flash('Click a hole in the main area.');const c=+m[1],l=m[2];if([0,1,2].some(i=>occupied(c+i+l)))return flash('Those holes are already in use.');return addFree({kind:'pot',id:'RV'+nextId(),col:c,row:l})}
+ if(occupied(h)&&!S.picks.length)return flash(`${describe(h)} is already in use.`);
+ if(!S.picks.length){S.picks=[h];S.msg={t:`First end: ${describe(h)}. Choose the second.`};renderSheet();renderPicks();return}
+ const a=S.picks[0];if(a===h){S.picks=[];S.msg=null;renderSheet();renderPicks();return}if(occupied(h))return flash(`${describe(h)} is already in use.`);
+ const e=t==='wire'?{kind:'wire',id:'F'+nextId(),a,b:h,color:['#2b6fd6','#e7a117','#23a455','#d3322a','#8d6be0'][S.fid%5]}:t==='r'?{kind:'r',id:'R'+(100+nextId()),a,b:h,value:S.rval}:{kind:'led',id:'D'+(100+nextId()),a,b:h,color:S.ledc};addFree(e)}
+const nextId=()=>++S.fid;
+function flash(t){S.msg={t,bad:true};S.picks=[];renderSheet();renderPicks();solve();updateDyn()}
+function addFree(e){S.free.push(e);S.picks=[];S.msg=null;refresh()}
+/* ---------- Events ---------- */
+const svg=$('svg');
+svg.addEventListener('pointerover',e=>{const h=e.target.dataset&&e.target.dataset.h;if(h)setHover(h)});
+svg.addEventListener('pointerout',e=>{if(e.target.dataset&&e.target.dataset.h)setHover(null)});
+svg.addEventListener('click',e=>{if(S.viewDrag)return;const h=e.target.dataset&&e.target.dataset.h;if(S.mode==='free'&&S.tool==='del'){const g=e.target.closest('[data-el]');if(g){const id=g.dataset.el;if(S.free.some(f=>f.id===id))S.free=S.free.filter(f=>f.id!==id);else S.removed.add(id);refresh()}return}
+ if(h)clickHole(h)});
+const press=(id,on)=>{if(on&&id==='BOOT')S.bootClick=true;if(on)S.pressed[id]=true;else delete S.pressed[id];dirty=true};
+document.addEventListener('pointerdown',e=>{const b=e.target.closest('[data-btn],[data-press]');if(b){const id=b.dataset.btn||b.dataset.press;press(id,true);S.holding=id}});
+document.addEventListener('pointerup',()=>{if(S.holding){press(S.holding,false);S.holding=null}});
+document.addEventListener('pointercancel',()=>{if(S.holding){press(S.holding,false);S.holding=null}});
+$('sheet').addEventListener('input',e=>{const id=e.target.dataset.ctl;if(id){S.ctrl[id]=e.target.value/100;const v=$('cv_'+id);if(v)v.textContent=e.target.value+'%';dirty=true}});
+$('sheet').addEventListener('change',e=>{if(e.target.id==='rv')S.rval=+e.target.value;if(e.target.id==='lc')S.ledc=e.target.value});
+$('sheet').addEventListener('click',e=>{const t=e.target;const id=t.id,d=t.dataset;
+ if(id==='next'){stopAuto();goto(S.built+1)}if(id==='back'){stopAuto();goto(S.built-1)}
+ if(id==='auto'){if(S.auto){stopAuto()}else{S.auto=setInterval(()=>{if(S.built>=L().steps.length){stopAuto();renderSheet();return}goto(S.built+1)},4500)}renderSheet()}
+ if(id==='cont'){S.phase='place';refresh()}
+ if(id==='doact'){S.built++;S.phase='result';refresh()}
+ if(id==='hint'){S.hint=!S.hint;refresh()}
+ if(id==='skip'){const st=L().steps[S.built];if(st){S.picks=[];place(null)}}
+ if(id==='again'){setMode('do')}
+ if(id==='undo'){if(S.free.length){S.free.pop();refresh()}}
+ if(id==='clear'){S.free=[];S.removed=new Set(elements().map(x=>x.id));S.stopCode=true;S.manual={};refresh()}
+ if(d.go){setMode(d.go)}
+ if(d.tool){S.tool=d.tool;S.picks=[];S.msg=null;renderSheet();renderPicks();solve();updateDyn()}
+ if(d.fault!==undefined){const i=+d.fault;if(i<0){S.fault=null;S.faultIdx=null}else{S.fault=L().faults[i].f;S.faultIdx=i}refresh()}
+ if(d.pin){const v=d.pv===''?undefined:+d.pv;if(v===undefined)delete S.manual[d.pin];else S.manual[d.pin]=v;refresh()}
+});
+$('viewbar').addEventListener('click',e=>{const v=e.target.dataset.v;if(v==='left')setView({z:VIEW.z-90});if(v==='right')setView({z:VIEW.z+90});if(v==='flip')setView({y:VIEW.y+180});if(v==='reset')setView({x:0,y:0,z:0})});
+['x','y','z'].forEach(k=>$('v'+k).addEventListener('input',e=>setView({[k]:+e.target.value})));
+$('cDrag').addEventListener('change',e=>{S.viewDrag=e.target.checked;svg.classList.toggle('dragging',S.viewDrag)});
+let dragAt=null;svg.addEventListener('pointerdown',e=>{if(!S.viewDrag)return;dragAt=[e.clientX,e.clientY];try{svg.setPointerCapture(e.pointerId)}catch(_){}});
+svg.addEventListener('pointermove',e=>{if(!dragAt)return;const dx=e.clientX-dragAt[0],dy=e.clientY-dragAt[1];dragAt=[e.clientX,e.clientY];setView({x:VIEW.x-dy*.5,y:VIEW.y+dx*.5})});
+svg.addEventListener('pointerup',()=>{dragAt=null});svg.addEventListener('pointercancel',()=>{dragAt=null});
+addEventListener('resize',applyView);
+$('meter').addEventListener('click',e=>{const d=e.target.dataset;if(d.mm){S.meter.mode=d.mm;renderMeter()}if(d.arm){S.meter.arm=S.meter.arm===d.arm?null:d.arm;renderMeter()}});
+$('timeline').addEventListener('click',e=>{const b=e.target.closest('[data-step]');if(!b)return;if(S.mode==='watch'){stopAuto();goto(+b.dataset.step+1)}});
+$('modes').addEventListener('click',e=>{const m=e.target.dataset.m;if(m)setMode(m)});
+$('cStrips').addEventListener('change',e=>{S.strips=e.target.checked;refresh()});
+$('cPower').addEventListener('change',e=>{S.power=e.target.checked;dirty=true});
+$('copy').addEventListener('click',async()=>{const b=$('copy');try{await navigator.clipboard.writeText($('code').textContent);b.textContent='Copied';setTimeout(()=>b.textContent='Copy',1200)}catch(_){const r=document.createRange();r.selectNodeContents($('code'));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Selected'}});
+function fillSelects(){$('sBB').value=S.bb;$('sBoard').innerHTML=Object.entries(BOARDS).map(([k,b])=>`<option value="${k}">${b.name}${b.vcc?` (${b.vcc===3.29?3.3:b.vcc} V)`:''}</option>`).join('');$('sBoard').value=S.board;fillLessons()}
+function fillLessons(){const op=l=>`<option value="${l.id}" ${l.mcu&&!B().mcu&&!l.force?'disabled':''}>${l.name}${l.mcu&&!B().mcu&&!l.force?' (needs a programmable board)':''}</option>`;$('sLesson').innerHTML=`<optgroup label="Your Day 1 tests">${LESSONS.filter(l=>l.group).map(op).join('')}</optgroup><optgroup label="Learning circuits">${LESSONS.filter(l=>!l.group).map(op).join('')}</optgroup>`;$('sLesson').value=S.lesson;$('sBB').disabled=!!L().force}
+$('sBoard').addEventListener('change',e=>{S.board=e.target.value;if((L().mcu&&!B().mcu)||(L().force&&L().force.board!==S.board))S.lesson='led';fillLessons();const m=S.mode;resetLesson(m==='do'?0:1);refresh()});
+$('sBB').addEventListener('change',e=>{S.bb=e.target.value;refresh()});
+$('sLesson').addEventListener('change',e=>{S.lesson=e.target.value;const fc=L().force;if(fc){S.board=fc.board;S.bb=fc.bb;$('sBoard').value=S.board;$('sBB').value=S.bb}fillLessons();const m=S.mode;resetLesson(m==='do'?0:1);refresh()});
+document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(S.mode==='watch'){if(e.key==='ArrowRight'){stopAuto();goto(S.built+1)}if(e.key==='ArrowLeft'){stopAuto();goto(S.built-1)}}});
+fillSelects();refresh();setInterval(tick,50);
+window.__bb={VIEW,setView,api,meterRead,S,LESSONS,BOARDS,evalCheck,curStep,refresh,solve,get SOL(){return SOL},res};
+</script>
+
+</body>
+</html>
