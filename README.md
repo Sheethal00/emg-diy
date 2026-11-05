@@ -1,5 +1,7 @@
 # DIY sEMG Recorder (from scratch)
 
+**Live animation:** https://sheethal00.github.io/emg-diy/ (end-to-end walkthrough from muscle to dashboard; source in `docs/index.html`).
+
 **Start here:** `docs/BUILD_GUIDE.md` (step-by-step assembly and testing) and `docs/schematic.svg` (circuit diagram).
 
 Single-supply (3.3 V), battery-powered surface EMG front end + ESP32 + Python logger.
