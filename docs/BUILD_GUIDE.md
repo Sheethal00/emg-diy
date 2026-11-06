@@ -1,15 +1,34 @@
 # Build Guide: DIY sEMG Recorder (1 channel, then expand to 4)
 
-See `schematic.svg` for the circuit. Take it slowly and test after every stage. If a stage fails its check, **stop and fix it before adding the next one.**
+See `schematic.svg` for the circuit (it shows the original part values; use the values in the substitution table below). Take it slowly and test after every stage. If a stage fails its check, **stop and fix it before adding the next one.**
+
+## Part values we actually use (substitutions)
+The original design used 11 k, 49.9 k and a few other parts that were not available locally. This build uses the values below. Where this table and the rest of the guide disagree, **this table wins**.
+
+| Position | Original | Use now | Effect |
+|---|---|---|---|
+| Rg1 (INA333 gain) | 11 k | **12 k** | Gain 1 + 100 k / 12 k = 9.33 |
+| R7 (gain stage feedback) | 49.9 k | **47 k** | Gain 1 + 47 k / 1 k = 48 |
+| Total gain | about 513 | **about 448** (9.33 x 48) | Run the dashboard with `--gain 448` |
+| C2 (with R7) | 6.8 nF | 6.8 nF | Low-pass corner about 498 Hz |
+| R9, C1 | 8.2 k, 1 uF | 8.2 k, 1 uF if you have it; otherwise **100 k and 0.1 uF** | High-pass corner about 19 Hz, or about 16 Hz with the 100 k / 0.1 uF pair |
+| C6 (reference buffer) | 1 uF | 1 uF, or **0.1 uF** if no 1 uF | Slightly less smooth reference |
+| C3, C4 (input RFI, common mode) | 1 nF | 1 nF, or **10 nF** (both the same value) | Input filter bandwidth stays well above 450 Hz |
+| C5 (differential) | 10 nF | 10 nF, or **0.1 uF if C3 and C4 are 10 nF** | Keep C5 at least 10 times C3/C4 |
+| 10 uF bulk capacitors | 10 uF | 10 uF; for a first bench test, an extra 0.1 uF at each supply pin | Fit proper 10 uF before the battery and electrodes |
+| Ferrite bead | bead | For the first bench test only, wire 3V3 straight to 3V3A | Add the bead before any body recording |
+| Test divider bottom resistor | 100 ohm | 100 ohm, or **1 k with `SIG_AMP` 3** (see Section 5) | Divider ratio 1001 or 101 |
+
+Rules: C3 and C4 must be the same value as each other. Keep each substitution only as long as you do not have the proper part.
 
 ## 0. Before you start
 
-**Tools:** multimeter (with AC volts), soldering iron + fine solder + flux, tweezers, side cutters, phone or laptop for tone generation, 3.5 mm audio cable you can cut.
+**Tools:** multimeter, soldering iron + fine solder + flux, tweezers, side cutters, magnifier or phone camera. The test signal comes from the ESP32's own DAC (Section 5).
 **Skills:** the INA333 and OPA2333 come in tiny SMD packages. Solder them onto adapter boards first (Section 1).
 
 ### Safety rules (non-negotiable)
 1. Electrodes on your body only when the circuit runs from **battery** and talks over **Bluetooth**. No USB cable, no mains-powered equipment connected.
-2. Never connect the audio test signal (Section 5) while electrodes are on you.
+2. Never connect the test signal (Section 5) while electrodes are on you.
 3. Do not use on broken skin, near the chest/heart, or with implanted devices. This is a hobby tool, not a medical device.
 
 ### Two power modes (use a jumper called J1)
@@ -23,15 +42,15 @@ Never have USB and the battery regulator both feeding the 3V3 rail at the same t
 > Battery note: a plain LDO such as the AP2112K stays in regulation only while the LiPo is above about 3.6 V. Below that the 3.3 V rail sags slowly. It still works for a first build; a 3.3 V buck-boost module is the better long-term choice.
 
 ## 1. Prepare the SMD parts
-1. Solder the INA333 (MSOP-8) and OPA2333 (SOIC/MSOP-8) onto adapter boards. Match **pin 1 (dot)** to the adapter's pin 1.
+1. Solder the INA333 and OPA2333 (both MSOP-8, 0.65 mm pins) onto separate SOP8/TSSOP8/MSOP8-to-DIP8 adapter boards. Use the side of the board marked **0.65mm** (the other side has wider 1.27 mm strips). Put the chip's **pin 1 dot** next to the board's triangle marker. Mark each board INA or OPA.
 2. Method: flux on the pads, tack one corner pin, check alignment, solder the opposite corner, then drag-solder the rest. Remove bridges with flux and solder wick.
-3. Check with the multimeter (continuity): no short between adjacent pins, and V+ is not shorted to V-.
+3. Check with the multimeter (continuity): each chip pin beeps to the hole with the same number, adjacent pins do not beep to each other, and V+ is not shorted to V-. Solder the chip first, then the header pins.
 
 ## 2. Stage A: power and VREF
 Build on perfboard or a breadboard. Use the rails: **3V3A** (analog supply), **GND**, **VREF**.
 
 1. Bench power: ESP32 3V3 pin -> ferrite bead -> 3V3A. Put 10 uF and 0.1 uF from 3V3A to GND.
-2. Divider: R1 (10k) from 3V3A to a node, R2 (10k) from that node to GND, C6 (1 uF) from the node to GND.
+2. Divider: R1 (10k) from 3V3A to a node, R2 (10k) from that node to GND, C6 (1 uF, or 0.1 uF) from the node to GND.
 3. Do not add the op-amp yet. Power on and measure the node: expect **1.65 V +/- 0.05 V**.
 4. Add U2A as a follower (see pin table below): node -> pin 3, pin 1 tied to pin 2. Measure pin 1: still **1.65 V**.
 
@@ -43,7 +62,7 @@ Build on perfboard or a breadboard. Use the rails: **3V3A** (analog supply), **G
 | 3 | +IN A | R1/R2/C6 midpoint |
 | 4 | V- | GND |
 | 5 | +IN B | node X (C1 and R9 meet here) |
-| 6 | -IN B | R8 (1k) to VREF, and R7 (49.9k) in parallel with C2 (6.8 nF) to pin 7 |
+| 6 | -IN B | R8 (1k) to VREF, and R7 (47k) in parallel with C2 (6.8 nF) to pin 7 |
 | 7 | OUT B | R7 || C2 (to pin 6) and R10 (1k) to the ADS1015 A0 |
 | 8 | V+ | 3V3A, with 0.1 uF to GND |
 
@@ -53,9 +72,9 @@ Also add R11 (10k) from VREF to the reference electrode wire.
 ### U1 INA333 pin table
 | Pin | Name | Connect to |
 |-----|------|------------|
-| 1 | RG | Rg1 (11k, 0.1% preferred) to pin 8 |
-| 2 | VIN- | R4 (1k) to Electrode -; C4 (1 nF) to VREF; C5 (10 nF) to pin 3; R6 (10 M, optional) to VREF |
-| 3 | VIN+ | R3 (1k) to Electrode +; C3 (1 nF) to VREF; C5 to pin 2; R5 (10 M, optional) to VREF |
+| 1 | RG | Rg1 (12k) to pin 8 |
+| 2 | VIN- | R4 (1k) to Electrode -; C4 (1 nF or 10 nF) to VREF; C5 (10 nF) to pin 3; R6 (10 M, optional) to VREF |
+| 3 | VIN+ | R3 (1k) to Electrode +; C3 (same value as C4) to VREF; C5 to pin 2; R5 (10 M, optional) to VREF |
 | 4 | V- | GND |
 | 5 | REF | **VREF** |
 | 6 | VOUT | C1 (1 uF), then node X |
@@ -70,15 +89,12 @@ Also add R11 (10k) from VREF to the reference electrode wire.
 3. **Check C1 (inputs still shorted to VREF):** U2 pin 7 reads **1.65 V +/- 0.1 V**.
 
 ## 5. Test with a known signal (no electrodes on you!)
-Use a phone tone-generator app and a 3.5 mm cable. Keep the phone away from the mains charger.
+The ESP32's own DAC makes a clean 100 Hz test sine, so no phone or audio cable is needed. Upload `tests/dac_test/dac_test.ino` (it drives GPIO25) and run it over USB, bench only.
 
-1. Cut the cable. Connect the **sleeve (ground)** to **VREF**. Connect the **tip** through **100 kOhm** to a test point T.
-2. Connect T to Electrode + (the R3 input pad). Put a **100 Ohm** resistor from T to VREF. Connect Electrode - to VREF. This divides the source by about **1001**.
-3. **Your multimeter cannot measure this signal.** Cheap meters such as the DT830D have AC ranges that start at 200 V. Use the ADS1015 and ESP32 instead (wire them first, as in Section 6) and read the swing of the counts. 1 count = 1 mV.
-4. First measure the **source**: before connecting the divider, feed the audio tip through a 1 kOhm resistor to the ADS1015 A0 (sleeve to A1 on the 1.65 V reference) and note the peak-to-peak swing of the counts, Vs(p-p). Play a steady 100 Hz sine at a low phone volume.
-5. Then connect the divider to the amplifier and measure the swing of the counts at U2 pin 7 through the ADS1015 (R10 to A0). Expect: `Vout(p-p) = Vs(p-p) / 1001 x 513 x filter factor`.
-
-Example: Vs(p-p) = 1000 counts gives about 490 counts peak-to-peak at 100 Hz (factor 0.96).
+1. Wire a divider so the DAC signal is made about 1000 times smaller: GPIO25 -> **100 k** -> test point T. Then either (a) **100 ohm** from T to VREF, ratio about 1001, with `SIG_AMP` 30, or (b) **1 k** from T to VREF, ratio about 101, with `SIG_AMP` 3 in the sketch.
+2. Connect T to Electrode + (the R3 input pad). Connect Electrode - to VREF. The DAC rests at mid-level (1.65 V), so there is no DC offset at the input.
+3. **Your multimeter cannot measure this signal.** Cheap meters such as the DT830D have AC ranges that start at 200 V. Read it through the ADS1015 and ESP32 instead (wire them as in Section 6) and look at the swing of the counts. 1 count = 1 mV.
+4. Expected: the DAC peak is `SIG_AMP x 12.9 mV`, which is about 387 mV for `SIG_AMP` 30 and 38.7 mV for `SIG_AMP` 3. After the divider and the gain of about 448, the signal at U2 pin 7 has a peak of about 170 mV, so about **330 counts peak-to-peak (about 115 counts RMS)** at 100 Hz. `Vout(p-p) = Vin(p-p) / ratio x 448 x filter factor`.
 
 | Frequency | Relative factor | Meaning |
 |-----------|-----------------|---------|
@@ -86,10 +102,12 @@ Example: Vs(p-p) = 1000 counts gives about 490 counts peak-to-peak at 100 Hz (fa
 | 20 Hz | 0.72 | about -3 dB corner |
 | 100 Hz | 0.96 | passband |
 | 200 Hz | 0.92 | passband |
-| 470 Hz | 0.71 | about -3 dB corner |
-| 1000 Hz | 0.42 | low-pass cutting |
+| 500 Hz | 0.72 | about -3 dB corner |
+| 1000 Hz | 0.44 | low-pass cutting |
 
-Within about +/-15% is fine for the first build (resistor and capacitor tolerance). The ADS1015 samples at 1 kHz, so stop at 200 Hz for this test: higher frequencies are not measured reliably. Check the 20 Hz and 470 Hz corners later with a scope or by checking the dashboard.
+Within about +/-15% is fine for the first build (resistor and capacitor tolerance). The ADS1015 samples at 1 kHz, so stop at 200 Hz for this test: higher frequencies are not measured reliably. Check the 20 Hz and 500 Hz corners later with a scope or by checking the dashboard.
+
+A phone tone generator is an optional alternative later. It needs a 3.5 mm adapter, and the phone must not be charging.
 
 ## 6. ADC and ESP32
 1. Wire the ADS1015: VDD to 3V3A, GND to GND, SCL to GPIO22, SDA to GPIO21, ADDR to GND (address 0x48), A0 to R10 (1k) from U2 pin 7, **A1 to VREF**. Leave ALRT open. Tie A2 and A3 to VREF.
@@ -116,7 +134,7 @@ Repeat Sections 3-4 for each channel (own INA333, OPA2333 gain stage, filters), 
 | Output sits at 1.65 V but never moves | HPF/gain stage broken or ADS not reading | Do Section 5 at U2 pin 7; then check ADS wiring |
 | Huge 50 Hz hum | Long unshielded leads, mains devices nearby | Shorter leads, shielded cable, move away from chargers, check reference electrode contact |
 | Slow wandering baseline or big spikes | Electrode movement, dry skin, cable pull | Re-prep skin, strain-relieve cables, tape leads down |
-| Clipped peaks on strong flexes | Gain too high | Change R7 to 24.9k (total gain about 261) and run with `--gain 261` |
+| Clipped peaks on strong flexes | Gain too high | Change R7 to 23.5k (two 47k in parallel, total gain about 229) and run with `--gain 229` |
 | Signal too small | Poor placement/contact, electrodes too close | Move to muscle belly, separate to 20 mm, re-prep skin |
 | `# ADS fail` in serial | I2C wiring, wrong address, missing power | Check SDA/SCL, ADDR pin, 3V3A at ADS VDD |
 | Noise bursts every Bluetooth transmit | Radio noise coupling into analog supply | Ferrite bead + 10 uF on 3V3A, keep analog away from ESP32 antenna, extra 0.1 uF at IC pins |

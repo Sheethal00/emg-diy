@@ -20,7 +20,7 @@ Electrode- --1k--+        REF=Vref        |  HPF 19 Hz                          
 Reference electrode --10k-- Vref (U2A buffer, 1.65 V)                                  |
                                                                       I2C (SDA21/SCL22) --> ESP32 --> Bluetooth --> Python
 ```
-Total gain = 10.09 x 50.9 = ~513. ADS1015 differential (AIN0 - AIN1), +/-2.048 V range, 1 mV/count.
+Total gain with the parts we use (Rg 12 k, R7 47 k) = 9.33 x 48 = ~448. The original design (11 k and 49.9 k) gives about 513. ADS1015 differential (AIN0 - AIN1), +/-2.048 V range, 1 mV/count.
 Full scale at the electrode = +/-4 mV. If strong contractions clip, change Rf (R7) to 24.9k (total gain ~261, +/-7.8 mV) and run the logger with `--gain 261`.
 
 ## Parts list

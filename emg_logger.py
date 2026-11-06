@@ -99,7 +99,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("port")
     ap.add_argument("--baud", type=int, default=921600)
-    ap.add_argument("--gain", type=float, default=513.0, help="total analog gain")
+    ap.add_argument("--gain", type=float, default=448.0, help="total analog gain")
     ap.add_argument("--out", default="session")
     a = ap.parse_args()
 

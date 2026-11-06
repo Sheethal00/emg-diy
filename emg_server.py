@@ -367,7 +367,7 @@ def main():
     ap.add_argument("--sim", action="store_true", help="simulated data (no hardware)")
     ap.add_argument("--port", help="serial/Bluetooth port of the ESP32")
     ap.add_argument("--baud", type=int, default=921600)
-    ap.add_argument("--gain", type=float, default=513.0, help="total analog gain")
+    ap.add_argument("--gain", type=float, default=448.0, help="total analog gain")
     ap.add_argument("--http-port", type=int, default=8000)
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--out", default="sessions")
